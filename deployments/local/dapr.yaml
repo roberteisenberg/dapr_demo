@@ -1,0 +1,24 @@
+version: 1
+common:
+  resourcesPath: ./components/
+apps:
+  - appID: catalog-service
+    appDirPath: ./catalog-service/
+    appPort: 8080
+    daprHTTPPort: 3500
+    daprGRPCPort: 50001
+    command: ["go", "run", "main.go"]
+
+  - appID: order-service
+    appDirPath: ./order-service/
+    appPort: 8081
+    daprHTTPPort: 3501
+    daprGRPCPort: 50002
+    command: ["python3", "app.py"]
+
+  - appID: notification-service
+    appDirPath: ./notification-service/
+    appPort: 8082
+    daprHTTPPort: 3502
+    daprGRPCPort: 50003
+    command: ["node", "index.js"]
