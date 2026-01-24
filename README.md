@@ -40,7 +40,7 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1, 1-A | [Local](deployments/local/) + Redis→RabbitMQ switch | Available |
-| 2, 2-A | Docker Compose + Redis→RabbitMQ switch | Planned |
+| 2, 2-A | [Docker](deployments/docker/) + Redis→RabbitMQ switch | Available |
 | 3, 3-A | Kubernetes + Redis→RabbitMQ switch | Planned |
 | 4 | Observability (Zipkin) | Planned |
 | 5 | Workflow (.NET Dapr Workflow) | Planned |

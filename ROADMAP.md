@@ -12,7 +12,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 |-------|-------------|--------|
 | 1 | Local Development | Available |
 | 1-A | Local: Redis → RabbitMQ | Available |
-| 2 | Docker Compose | Planned |
+| 2 | Docker Compose | Available |
 | 2-A | Docker: Redis → RabbitMQ | Planned |
 | 3 | Kubernetes Base | Planned |
 | 3-A | Kubernetes: Redis → RabbitMQ | Planned |
@@ -65,7 +65,7 @@ Containerized deployment with Dapr sidecars.
 - Sidecar pattern with Docker Compose
 - Container networking
 
-**Location**: deployments/docker/ (coming soon)
+**Location**: [deployments/docker/](deployments/docker/)
 
 ---
 
@@ -150,14 +150,20 @@ Additional services added in later phases:
 dapr_demo/
 ├── README.md
 ├── ROADMAP.md
+├── services/                      # Shared (Docker & Kubernetes)
+│   ├── catalog-service/           # Go + Dockerfile
+│   ├── order-service/             # Python + Dockerfile
+│   └── notification-service/      # Node.js + Dockerfile
 └── deployments/
-    ├── local/                # Phase 1, 1-A
-    │   ├── catalog-service/  # Embedded (no Dockerfile)
+    ├── local/                     # Phase 1, 1-A
+    │   ├── catalog-service/       # Embedded (no Dockerfile)
     │   ├── order-service/
     │   ├── notification-service/
     │   └── components/
-    ├── docker/               # Phase 2, 2-A
-    └── kubernetes/           # Phase 3+
+    ├── docker/                    # Phase 2, 2-A
+    │   ├── docker-compose.yml
+    │   └── components/
+    └── kubernetes/                # Phase 3+
 ```
 
 ### Why Embedded Services in Local?
