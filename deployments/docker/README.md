@@ -85,10 +85,24 @@ Watch the `docker-compose` terminal - you'll see the order flow across all three
 docker-compose down
 ```
 
-To also remove volumes (clears Redis data):
+### 4. Cleanup
+
+**Stop and remove containers/networks:**
+```bash
+docker-compose down
+```
+
+**Also remove volumes (clears Redis data):**
 ```bash
 docker-compose down -v
 ```
+
+**Full cleanup (also removes built images):**
+```bash
+docker-compose down -v --rmi local
+```
+
+This removes all containers, networks, volumes, and locally-built images (catalog-service, order-service, notification-service). Use this when transitioning to Kubernetes or to reclaim disk space.
 
 ## Switching Pub/Sub Backend
 
@@ -169,3 +183,13 @@ deployments/docker/
 ├── README.md
 └── ARCHITECTURE.md
 ```
+
+## Next Steps: Kubernetes Deployment
+
+Ready to move to Kubernetes? Clean up Docker first:
+
+```bash
+docker-compose down -v --rmi local
+```
+
+Then proceed to [../kubernetes/README.md](../kubernetes/README.md).

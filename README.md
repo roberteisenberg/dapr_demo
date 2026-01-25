@@ -41,21 +41,34 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 |-------|-------------|--------|
 | 1, 1-A | [Local](deployments/local/) + Redis→RabbitMQ switch | Available |
 | 2, 2-A | [Docker](deployments/docker/) + Redis→RabbitMQ switch | Available |
-| 3, 3-A | Kubernetes + Redis→RabbitMQ switch | Planned |
+| 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + Pub/Sub swap + State store swap | Available |
 | 4 | Observability (Zipkin) | Planned |
 | 5 | Workflow (.NET Dapr Workflow) | Planned |
 | 6+ | Cloud, Secrets, CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
 
+## Deployment Progression
+
+Each phase builds on the previous, adding deployment complexity while keeping service code unchanged:
+
+1. **Local** - Run from source with `dapr run`. Learn Dapr basics.
+2. **Docker** - Containers with explicit Dapr sidecar management. Learn the sidecar pattern.
+3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend. Production patterns.
+
+The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
+
 ## Key Demonstration: Infrastructure Portability
 
-One of Dapr's main features is swapping infrastructure without code changes. Each deployment type demonstrates switching pub/sub from Redis to RabbitMQ:
+Dapr's component abstraction lets you swap infrastructure without code changes. The demo progressively demonstrates this:
+
+- **Phases 1-A, 2-A, 3-A**: Switch pub/sub from Redis to RabbitMQ
+- **Phase 3-B**: Switch state store from Redis to MongoDB
 
 ```bash
-# Local example - switch from Redis to RabbitMQ
+# Example - swap pub/sub backend (same pattern in every deployment)
 cp components/templates/pubsub-rabbitmq.yaml components/pubsub.yaml
-dapr run -f .   # Same code, different infrastructure
+# Restart services - same code, different infrastructure
 ```
 
 ## Resources
