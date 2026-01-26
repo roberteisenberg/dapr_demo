@@ -12,6 +12,9 @@ A hands-on project demonstrating Dapr microservices from local development to Ku
 - **Distributed Tracing**: Zipkin integration for visualizing request flows
 - **Saga Pattern**: Dapr Workflow with automatic compensation on failure
 - **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
+- **Enterprise Security**: End-to-end security from React app to AKS cluster (planned)
+- **CI/CD**: GitHub Actions pipelines (planned)
+- **API Management**: Azure APIM gateway (planned)
 
 ## Quick Start
 
