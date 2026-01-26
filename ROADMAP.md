@@ -18,7 +18,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 3-A | Kubernetes: Pub/Sub Redis → RabbitMQ | Available |
 | 3-B | Kubernetes: State Redis → MongoDB | Available |
 | 4 | Observability (Zipkin) | Available |
-| 5 | Workflow (.NET Dapr Workflow) | Planned |
+| 5 | Workflow (.NET Dapr Workflow) | Available |
 | 6 | Cloud (Azure AKS) | Planned |
 | 7 | Secrets (Azure Key Vault) | Planned |
 | 8 | CI/CD (GitHub Actions) | Planned |
@@ -273,12 +273,28 @@ Add Zipkin distributed tracing to the Kubernetes deployment. Dapr sidecars autom
 
 ## Phase 5: Workflow
 
-Add a .NET Dapr Workflow service for order orchestration.
+Add a .NET Dapr Workflow service for order orchestration using the saga pattern with automatic compensation on failure.
 
 **What you'll learn:**
-- Dapr Workflow SDK
+- Dapr Workflow SDK for .NET
 - Saga pattern for distributed transactions
-- Order fulfillment workflow with compensation
+- Compensation logic for rollback
+- Workflow state management
+
+**Location**: [deployments/kubernetes-phase5-workflow/](deployments/kubernetes-phase5-workflow/)
+
+**New service**: `services/workflow-service/` (.NET 8.0)
+
+**Saga steps:**
+1. ValidateOrderActivity - Validate order fields
+2. ReserveInventoryActivity - Decrement stock (compensation: release)
+3. ProcessPaymentActivity - Simulate payment (fails if >$10k)
+4. NotifyCustomerActivity - Publish to pub/sub
+
+**Key changes from Phase 4:**
+- `services/workflow-service/` - New .NET 8.0 Dapr Workflow service
+- `manifests/07-workflow-service.yaml` - Kubernetes deployment
+- `scripts/test-workflow.sh` - Tests saga pattern and compensation
 
 ---
 
@@ -318,7 +334,8 @@ dapr_demo/
 ├── services/                      # Shared (Docker & Kubernetes)
 │   ├── catalog-service/           # Go + Dockerfile
 │   ├── order-service/             # Python + Dockerfile
-│   └── notification-service/      # Node.js + Dockerfile
+│   ├── notification-service/      # Node.js + Dockerfile
+│   └── workflow-service/          # .NET 8.0 + Dockerfile (Phase 5)
 ├── frontend/                      # Phase 3+ (Kubernetes only)
 │   └── web-app/                   # React SPA + Dockerfile
 └── deployments/
@@ -334,12 +351,18 @@ dapr_demo/
     │   ├── manifests/
     │   ├── config/
     │   └── scripts/
-    └── kubernetes-phase4-observability/  # Phase 4 (adds Zipkin)
+    ├── kubernetes-phase4-observability/  # Phase 4 (adds Zipkin)
+    │   ├── manifests/
+    │   │   └── 10-zipkin.yaml
+    │   │   └── 03-components/tracing.yaml
+    │   ├── config/
+    │   └── scripts/
+    └── kubernetes-phase5-workflow/       # Phase 5 (adds Dapr Workflow)
         ├── manifests/
-        │   └── 10-zipkin.yaml     # Zipkin deployment
-        │   └── 03-components/tracing.yaml  # Dapr tracing config
+        │   └── 07-workflow-service.yaml
         ├── config/
         └── scripts/
+            └── test-workflow.sh
 ```
 
 ### Why Embedded Services in Local?

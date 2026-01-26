@@ -34,6 +34,7 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | catalog-service | Go | Product catalog CRUD, state management |
 | order-service | Python | Order processing, service invocation, pub/sub |
 | notification-service | Node.js | Event subscriber |
+| workflow-service | .NET 8.0 | Order orchestration with saga pattern (Phase 5+) |
 
 ## Project Roadmap
 
@@ -42,8 +43,8 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | 1, 1-A | [Local](deployments/local/) + Redis→RabbitMQ switch | Available |
 | 2, 2-A | [Docker](deployments/docker/) + Redis→RabbitMQ switch | Available |
 | 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + Pub/Sub swap + State store swap | Available |
-| 4 | Observability (Zipkin) | Planned |
-| 5 | Workflow (.NET Dapr Workflow) | Planned |
+| 4 | [Observability](deployments/kubernetes-phase4-observability/) (Zipkin tracing) | Available |
+| 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
 | 6+ | Cloud, Secrets, CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
@@ -55,6 +56,8 @@ Each phase builds on the previous, adding deployment complexity while keeping se
 1. **Local** - Run from source with `dapr run`. Learn Dapr basics.
 2. **Docker** - Containers with explicit Dapr sidecar management. Learn the sidecar pattern.
 3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend. Production patterns.
+4. **Observability** - Zipkin distributed tracing. Visualize request flows across services.
+5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
 
 The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
 

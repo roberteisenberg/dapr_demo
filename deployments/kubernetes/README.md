@@ -21,6 +21,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of automatic si
 - kubectl
 - Helm
 - Dapr CLI
+- jq (for test scripts): `sudo apt-get install -y jq`
 
 ### Coming from Docker Compose (Phase 2)?
 
@@ -37,6 +38,21 @@ This removes containers, networks, volumes, and built images. Kubernetes builds 
 
 ### 1. Setup cluster
 
+**Starting fresh?** Clean up any previous setup first:
+
+```bash
+# Kill any existing port-forwards
+pkill -f "kubectl port-forward" 2>/dev/null || true
+
+# Full reset (recommended for clean start)
+minikube delete
+
+# Or just clean up the namespace (keeps cluster)
+# kubectl delete namespace dapr-demo --ignore-not-found
+```
+
+Then setup:
+
 ```bash
 cd deployments/kubernetes
 ./scripts/setup-cluster.sh
@@ -44,7 +60,17 @@ cd deployments/kubernetes
 
 This starts minikube, installs Dapr on Kubernetes, and configures nginx-ingress with a Dapr sidecar. The script waits for all components to be ready before completing.
 
-This may take several minutes, especially the first time. When complete, you'll see:
+This may take several minutes, especially the first time.
+
+**Timeout or CrashLoopBackOff?** The ingress controller's Dapr sidecar may crash initially because it references a tracing config that doesn't exist until `deploy-all.sh` runs. This is expected. Continue with steps 2 and 3, then restart the ingress:
+
+```bash
+# After deploy-all.sh completes:
+kubectl rollout restart deployment/api-gateway-ingress-nginx-controller -n dapr-demo
+
+# Verify all pods are running (2/2 for services with sidecars)
+kubectl get pods -n dapr-demo
+``` When complete, you'll see:
 ```
 Next steps:
   1. eval $(minikube docker-env)
