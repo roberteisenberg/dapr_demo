@@ -4,10 +4,14 @@ A hands-on project demonstrating Dapr microservices from local development to Ku
 
 ## What You'll Learn
 
-- **Dapr Building Blocks**: State Management, Pub/Sub, Service Invocation
-- **Polyglot Services**: Go, Python, Node.js working together
-- **Deployment Progression**: Local → Docker → Kubernetes
-- **Infrastructure Portability**: Switch from Redis to RabbitMQ without code changes
+- **Dapr Building Blocks**: State Management, Pub/Sub, Service Invocation, Workflow
+- **Polyglot Services**: Go, Python, Node.js, .NET working together
+- **Dapr Without Kubernetes**: Local development and Docker Compose with explicit sidecars
+- **Dapr With Kubernetes**: Minikube with auto-injected sidecars, scaling to Azure AKS
+- **API Gateway Patterns**: Simple routing to NGINX Ingress with Dapr sidecar
+- **Distributed Tracing**: Zipkin integration for visualizing request flows
+- **Saga Pattern**: Dapr Workflow with automatic compensation on failure
+- **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
 
 ## Quick Start
 
