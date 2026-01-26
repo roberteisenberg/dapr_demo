@@ -17,7 +17,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 3 | Kubernetes Base | Available |
 | 3-A | Kubernetes: Pub/Sub Redis → RabbitMQ | Available |
 | 3-B | Kubernetes: State Redis → MongoDB | Available |
-| 4 | Observability (Zipkin) | Planned |
+| 4 | Observability (Zipkin) | Available |
 | 5 | Workflow (.NET Dapr Workflow) | Planned |
 | 6 | Cloud (Azure AKS) | Planned |
 | 7 | Secrets (Azure Key Vault) | Planned |
@@ -246,12 +246,28 @@ spec:
 
 ## Phase 4: Observability
 
-Add distributed tracing to the Kubernetes deployment.
+Add Zipkin distributed tracing to the Kubernetes deployment. Dapr sidecars automatically send trace spans to Zipkin, providing visibility into request flows across all services.
 
 **What you'll learn:**
-- Zipkin distributed tracing
-- Dapr dashboard
-- Debugging microservices
+- Dapr tracing configuration
+- Zipkin distributed tracing UI
+- Visualizing request flows across microservices
+- Debugging latency and errors in distributed systems
+
+**Location**: [deployments/kubernetes-phase4-observability/](deployments/kubernetes-phase4-observability/)
+
+**Key changes from Phase 3:**
+- `manifests/10-zipkin.yaml` - Zipkin deployment
+- `manifests/03-components/tracing.yaml` - Dapr tracing Configuration
+- Service manifests add `dapr.io/config: "tracing"` annotation
+
+**Dashboards available:**
+
+| Dashboard | Command | URL |
+|-----------|---------|-----|
+| Zipkin | `kubectl port-forward -n dapr-demo svc/zipkin 9411:9411` | http://localhost:9411 |
+| Dapr | `dapr dashboard -k -n dapr-demo` | http://localhost:8080 |
+| Minikube | `minikube dashboard` | Opens automatically |
 
 ---
 
@@ -314,10 +330,16 @@ dapr_demo/
     ├── docker/                    # Phase 2, 2-A
     │   ├── docker-compose.yml
     │   └── components/
-    └── kubernetes/                # Phase 3+
-        ├── manifests/             # K8s YAML manifests
-        ├── config/                # Helm values, etc.
-        └── scripts/               # Setup, deploy, cleanup
+    ├── kubernetes/                # Phase 3 (base)
+    │   ├── manifests/
+    │   ├── config/
+    │   └── scripts/
+    └── kubernetes-phase4-observability/  # Phase 4 (adds Zipkin)
+        ├── manifests/
+        │   └── 10-zipkin.yaml     # Zipkin deployment
+        │   └── 03-components/tracing.yaml  # Dapr tracing config
+        ├── config/
+        └── scripts/
 ```
 
 ### Why Embedded Services in Local?

@@ -1,0 +1,30 @@
+# Nginx-ingress Helm values for Dapr API gateway pattern
+# Runs nginx-ingress with a Dapr sidecar for service invocation
+
+# Disable admission webhook (avoids TLS certificate issues in minikube)
+controller:
+  admissionWebhooks:
+    enabled: false
+  service:
+    labels:
+      purpose: "dapr-demo-api-gateway"
+
+  # Use a custom ingress class to avoid conflicts with other ingress controllers
+  ingressClass: "dapr"
+  ingressClassResource:
+    name: "dapr"
+    enabled: true
+    default: false
+
+  # Dapr sidecar annotations - this is what makes it an API gateway
+  podAnnotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "api-gateway"
+    dapr.io/app-port: "80"
+    dapr.io/config: "tracing"
+    # Required since Dapr 1.4 - allows sidecar to listen on all interfaces
+    dapr.io/sidecar-listen-addresses: "0.0.0.0"
+
+  # Scope to dapr-demo namespace only
+  scope:
+    enabled: true
