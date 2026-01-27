@@ -82,6 +82,21 @@ echo ""
 echo "Creating dapr-demo namespace..."
 kubectl create namespace dapr-demo 2>/dev/null || echo "  Namespace already exists"
 
+# Create tracing config (required by ingress controller's Dapr sidecar)
+echo "Creating Dapr tracing configuration..."
+cat <<EOF | kubectl apply -f -
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: tracing
+  namespace: dapr-demo
+spec:
+  tracing:
+    samplingRate: "1"
+    zipkin:
+      endpointAddress: "http://zipkin.dapr-demo.svc.cluster.local:9411/api/v2/spans"
+EOF
+
 # Install nginx-ingress with Dapr sidecar
 echo ""
 echo "Installing nginx-ingress with Dapr sidecar..."

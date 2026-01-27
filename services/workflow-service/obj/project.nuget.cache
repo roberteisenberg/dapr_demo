@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "JQV5qEfrLng=",
+  "dgSpecHash": "j+pRoxzS1cM=",
   "success": true,
   "projectFilePath": "C:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
   "expectedPackageFiles": [

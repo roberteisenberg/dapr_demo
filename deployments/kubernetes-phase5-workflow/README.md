@@ -84,13 +84,13 @@ kubectl get pods -n dapr-demo
 
 ```bash
 eval $(minikube docker-env)
-./scripts/build-images.sh
+./scripts/build-images.sh --with-frontend
 ```
 
 ### 3. Deploy services
 
 ```bash
-./scripts/deploy-all.sh
+./scripts/deploy-all.sh --with-frontend
 ```
 
 ### 4. Start port-forward
@@ -99,8 +99,14 @@ eval $(minikube docker-env)
 kubectl port-forward -n dapr-demo svc/api-gateway-ingress-nginx-controller 8080:80 &
 ```
 
-### 5. Test the workflow
+### 5. Access the application
 
+**Web UI (React app):** http://localhost:8080
+- Browse product catalog
+- "Quick Order" - uses order-service directly
+- "Workflow Order" - uses saga pattern with compensation
+
+**API (curl/scripts):**
 ```bash
 ./scripts/test-workflow.sh
 ```

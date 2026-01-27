@@ -11,6 +11,10 @@ echo "Cleaning up Kubernetes resources"
 echo "========================================="
 echo ""
 
+# Kill any existing port-forwards
+echo "Stopping port-forwards..."
+pkill -f "kubectl port-forward" 2>/dev/null || true
+
 # Check if namespace exists
 if ! kubectl get namespace dapr-demo &> /dev/null; then
     echo "Namespace dapr-demo does not exist. Nothing to clean up."

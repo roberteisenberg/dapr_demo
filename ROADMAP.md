@@ -1,5 +1,43 @@
 # Project Roadmap
 
+---
+## ⚠️ PENDING CHANGES - TEST BEFORE AKS
+
+**Status:** Uncommitted changes need testing before proceeding to Phase 6 (AKS).
+
+### Changes to Test:
+
+1. **Fix: Ingress sidecar startup issue** (Phases 3, 4, 5)
+   - `setup-cluster.sh` now creates tracing config before installing nginx-ingress
+   - This prevents CrashLoopBackOff on the ingress controller's Dapr sidecar
+   - **Test:** Run `minikube delete`, then full setup from scratch
+
+2. **Fix: Port-forward cleanup** (Phases 3, 4, 5)
+   - `cleanup.sh` now kills existing port-forwards
+   - **Test:** Run `./scripts/cleanup.sh` and verify no orphan processes
+
+3. **Feature: Web-app workflow integration** (Phase 5 only)
+   - New "Workflow Order" button in React frontend
+   - Shows saga steps visually (Validate → Reserve → Payment → Notify)
+   - Shows compensation when payment fails (orders > $10k)
+   - **Test:**
+     ```bash
+     ./scripts/build-images.sh --with-frontend
+     ./scripts/deploy-all.sh --with-frontend
+     # Click "Workflow Order" on a product, complete the form
+     # Test success case (< $10k) and failure case (> $10k)
+     ```
+
+### After Testing:
+```bash
+git add -A
+git commit -m "Fix ingress sidecar startup, add workflow UI integration"
+```
+
+Then proceed to Phase 6 (AKS).
+
+---
+
 ## Overview
 
 This project demonstrates Dapr microservices across deployment environments, progressing from local development to production-ready Kubernetes.

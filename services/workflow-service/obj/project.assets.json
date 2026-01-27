@@ -1586,17 +1586,18 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
+      "projectUniqueName": "c:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
       "projectName": "WorkflowService",
-      "projectPath": "C:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
+      "projectPath": "c:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
       "packagesPath": "C:\\Users\\rober\\.nuget\\packages\\",
-      "outputPath": "C:\\Projects\\dapr_demo\\services\\workflow-service\\obj\\",
+      "outputPath": "c:\\Projects\\dapr_demo\\services\\workflow-service\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
         "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\"
       ],
       "configFilePaths": [
+        "c:\\Projects\\dapr_demo\\services\\workflow-service\\NuGet.Config",
         "C:\\Users\\rober\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
@@ -1606,7 +1607,6 @@
         "net8.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts } from '../services/api';
+import { getProducts, getWorkflowInfo } from '../services/api';
 import OrderForm from './OrderForm';
 import ProductForm from './ProductForm';
+import WorkflowOrderForm from './WorkflowOrderForm';
 
 function ProductList() {
   const [products, setProducts] = useState([]);
@@ -9,10 +10,24 @@ function ProductList() {
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [useWorkflow, setUseWorkflow] = useState(false);
+  const [workflowAvailable, setWorkflowAvailable] = useState(false);
 
   useEffect(() => {
     fetchProducts();
+    checkWorkflowAvailable();
   }, []);
+
+  const checkWorkflowAvailable = async () => {
+    try {
+      await getWorkflowInfo();
+      setWorkflowAvailable(true);
+      console.log('Workflow service available');
+    } catch (err) {
+      setWorkflowAvailable(false);
+      console.log('Workflow service not available (Phase 5+ required)');
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -28,18 +43,21 @@ function ProductList() {
     }
   };
 
-  const handleOrderClick = (product) => {
+  const handleOrderClick = (product, workflow = false) => {
     setSelectedProduct(product);
+    setUseWorkflow(workflow);
   };
 
   const handleOrderComplete = () => {
     setSelectedProduct(null);
-    // Optionally refresh products to update stock
+    setUseWorkflow(false);
+    // Refresh products to update stock
     fetchProducts();
   };
 
   const handleOrderCancel = () => {
     setSelectedProduct(null);
+    setUseWorkflow(false);
   };
 
   const handleAddProduct = () => {
@@ -93,20 +111,40 @@ function ProductList() {
               <span className="price">${product.price.toFixed(2)}</span>
               <span className="stock">Stock: {product.stock}</span>
             </div>
-            <button
-              className="order-button"
-              onClick={() => handleOrderClick(product)}
-              disabled={product.stock === 0}
-            >
-              {product.stock > 0 ? 'Order Now' : 'Out of Stock'}
-            </button>
+            <div className="order-buttons">
+              <button
+                className="order-button"
+                onClick={() => handleOrderClick(product, false)}
+                disabled={product.stock === 0}
+              >
+                {product.stock > 0 ? (workflowAvailable ? 'Quick Order' : 'Order Now') : 'Out of Stock'}
+              </button>
+              {workflowAvailable && (
+                <button
+                  className="order-button workflow-button"
+                  onClick={() => handleOrderClick(product, true)}
+                  disabled={product.stock === 0}
+                  title="Order with Saga Pattern"
+                >
+                  {product.stock > 0 ? 'Workflow Order' : 'Out of Stock'}
+                </button>
+              )}
+            </div>
           </div>
         ))}
         </div>
       )}
 
-      {selectedProduct && (
+      {selectedProduct && !useWorkflow && (
         <OrderForm
+          product={selectedProduct}
+          onComplete={handleOrderComplete}
+          onCancel={handleOrderCancel}
+        />
+      )}
+
+      {selectedProduct && useWorkflow && (
+        <WorkflowOrderForm
           product={selectedProduct}
           onComplete={handleOrderComplete}
           onCancel={handleOrderCancel}

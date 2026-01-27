@@ -81,29 +81,34 @@ kubectl get pods -n dapr-demo
 
 ```bash
 eval $(minikube docker-env)
-./scripts/build-images.sh
+./scripts/build-images.sh --with-frontend
 ```
 
 ### 3. Deploy services with tracing
 
 ```bash
-./scripts/deploy-all.sh
+./scripts/deploy-all.sh --with-frontend
 ```
 
-This deploys all services with tracing enabled, plus Zipkin.
+This deploys all services with tracing enabled, plus Zipkin and the React web app.
 
 ### 4. Start port-forwards
 
 ```bash
-# API Gateway
+# API Gateway (serves both web app and API)
 kubectl port-forward -n dapr-demo svc/api-gateway-ingress-nginx-controller 8080:80 &
 
-# Zipkin
+# Zipkin (distributed tracing UI)
 kubectl port-forward -n dapr-demo svc/zipkin 9411:9411 &
 ```
 
-### 5. Generate traces
+### 5. Access the application
 
+**Web UI (React app):** http://localhost:8080
+- Browse product catalog, create orders
+- Each action generates traces visible in Zipkin
+
+**API (curl/scripts):**
 ```bash
 ./scripts/test-services.sh
 ```
