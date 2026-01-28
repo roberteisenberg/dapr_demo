@@ -1,0 +1,15 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: dapr-demo
+spec:
+  type: state.mongodb
+  version: v1
+  metadata:
+  - name: host
+    value: mongodb:27017
+  - name: databaseName
+    value: daprdb
+  - name: actorStateStore
+    value: "true"

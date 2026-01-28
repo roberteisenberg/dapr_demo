@@ -1,5 +1,59 @@
 # Project Roadmap
 
+## Pending Work
+
+**Phase 6 (Azure AKS) - Ready to Test**
+
+Terraform implementation complete. To deploy:
+
+```bash
+cd deployments/kubernetes-phase6-aks/terraform
+terraform init
+terraform apply                                # Create AKS, ACR (~15 min)
+
+cd ..
+./scripts/setup-cluster.sh                     # Install Dapr, nginx-ingress
+./scripts/build-and-push.sh --with-frontend    # Build images in cloud
+./scripts/deploy-all.sh --with-frontend        # Deploy to AKS
+./scripts/test-services.sh                     # Test basic services
+./scripts/test-workflow.sh                     # Test saga pattern
+```
+
+Public URL will be displayed after setup-cluster.sh (no port-forward needed).
+
+Delete this section after testing is complete.
+
+**Phase 7 (AI Agents) - Research Notes**
+
+**Discovery: Dapr Agents is a full AI agent framework (Apache-2.0, open source)**
+
+GitHub: https://github.com/dapr/dapr-agents (598+ stars)
+
+| Aspect | Dapr Agents | LangChain |
+|--------|-------------|-----------|
+| LLM abstraction | ✅ YAML config swap | ✅ Code changes |
+| Agent loops | ✅ | ✅ |
+| Durability | ✅ Built-in (Workflow) | ❌ Needs external |
+| Multi-agent mesh | ✅ Pub/Sub routing | Partial |
+| Kubernetes-native | ✅ Scale 1000s of agents | ❌ |
+| Memory | ✅ State store backed | ✅ RAG, buffer, etc. |
+| Maturity | Newer (2025) | Production |
+| Ecosystem | Dapr | Huge |
+
+**Options for Phase 7:**
+1. **Dapr Agents only** - Stays in Dapr ecosystem, durability built-in
+2. **LangChain only** - Richer AI patterns, larger community
+3. **Compare both** - Same use case, different frameworks
+
+**Dapr AI Stack:**
+- Dapr Conversation API (alpha) - LLM abstraction building block
+- Dapr Agents - Full agent framework built on Dapr primitives
+- Diagrid Catalyst - Managed infrastructure (paid)
+
+**New service:** `services/ai-agent-service/` (Python)
+
+---
+
 ## Overview
 
 This project demonstrates Dapr microservices across deployment environments, progressing from local development to production-ready Kubernetes.
@@ -19,10 +73,11 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 3-B | Kubernetes: State Redis → MongoDB | Available |
 | 4 | Observability (Zipkin) | Available |
 | 5 | Workflow (.NET Dapr Workflow) | Available |
-| 6 | Cloud (Azure AKS) | Planned |
-| 7 | Secrets (Azure Key Vault) | Planned |
-| 8 | CI/CD (GitHub Actions) | Planned |
-| 9 | API Management | Planned |
+| 6 | Cloud (Azure AKS) | Available |
+| 7 | AI Agents (Dapr Agents) | Planned |
+| 8 | End-to-end security from React app to AKS cluster | Planned |
+| 9 | CI/CD (GitHub Actions) | Planned |
+| 10 | API Management | Planned |
 
 ---
 
@@ -298,14 +353,81 @@ Add a .NET Dapr Workflow service for order orchestration using the saga pattern 
 
 ---
 
-## Phase 6+: Cloud & Enterprise (Future)
+## Phase 6: Azure AKS
+
+Deploy to Azure Kubernetes Service with Azure Container Registry. Public access via Azure DNS label - no port-forward needed.
+
+**What you'll learn:**
+- Azure CLI for resource management
+- Azure Container Registry with ACR Tasks (cloud builds)
+- AKS cluster creation and Dapr installation
+- Public access patterns with LoadBalancer and DNS labels
+- Persistent storage with Azure Managed Disks
+
+**Location**: [deployments/kubernetes-phase6-aks/](deployments/kubernetes-phase6-aks/)
+
+**Key changes from Phase 5:**
+- `scripts/setup-azure.sh` - Create Azure resources (RG, ACR, AKS)
+- `scripts/build-and-push.sh` - Build images in cloud with ACR Tasks
+- Manifests use `{{ACR_LOGIN_SERVER}}` placeholder and `imagePullPolicy: Always`
+- Infrastructure manifests include PersistentVolumeClaims for Azure Managed Disks
+- Ingress uses LoadBalancer with Azure DNS label for public URL
+
+**Cost estimate:** ~$70/month (delete resources when not in use)
+
+---
+
+## Phase 7: AI Agents (Dapr Agents)
+
+Build AI agents using **Dapr Agents** - an open source framework (Apache-2.0) for durable, scalable AI agent orchestration.
+
+**GitHub:** https://github.com/dapr/dapr-agents
+
+**What you'll learn:**
+- Dapr Agents framework for AI orchestration
+- Durable agent execution (survives failures, resumes with context)
+- Multi-agent systems with Pub/Sub mesh routing
+- LLM provider abstraction (swap Claude ↔ OpenAI via YAML)
+- Kubernetes-native scaling (1000s of agents)
+
+**Why Dapr Agents vs LangChain:**
+
+| Aspect | Dapr Agents | LangChain |
+|--------|-------------|-----------|
+| Durability | ✅ Built-in | ❌ Needs external |
+| Multi-agent mesh | ✅ Pub/Sub | Partial |
+| Kubernetes-native | ✅ | ❌ |
+| Provider swap | ✅ YAML | Code changes |
+| Ecosystem | Dapr | Larger |
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────┐
+│                  Dapr Agents                        │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Agent: OrderAssistant                        │  │
+│  │    └─ Tools: catalog-service, order-service   │  │
+│  │    └─ Memory: Dapr state store                │  │
+│  │    └─ LLM: Claude (via Conversation API)      │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  Built on: Workflow │ Conversation │ Pub/Sub │ State│
+└─────────────────────────────────────────────────────┘
+```
+
+**New service:** `services/ai-agent-service/` (Python with Dapr Agents SDK)
+
+**Location:** `deployments/kubernetes-phase7-ai-agents/`
+
+---
+
+## Phase 8+: Future
 
 | Phase | Feature | Description |
 |-------|---------|-------------|
-| 6 | Azure AKS | Deploy to Azure Kubernetes Service |
-| 7 | Secrets | Azure Key Vault integration |
-| 8 | CI/CD | GitHub Actions pipelines |
-| 9 | API Management | Azure APIM gateway |
+| 8 | End-to-end Security | React app to AKS with Azure AD, mTLS |
+| 9 | CI/CD | GitHub Actions pipelines |
+| 10 | API Management | Azure APIM gateway |
 
 ---
 
@@ -357,12 +479,19 @@ dapr_demo/
     │   │   └── 03-components/tracing.yaml
     │   ├── config/
     │   └── scripts/
-    └── kubernetes-phase5-workflow/       # Phase 5 (adds Dapr Workflow)
-        ├── manifests/
-        │   └── 07-workflow-service.yaml
+    ├── kubernetes-phase5-workflow/       # Phase 5 (adds Dapr Workflow)
+    │   ├── manifests/
+    │   │   └── 07-workflow-service.yaml
+    │   ├── config/
+    │   └── scripts/
+    │       └── test-workflow.sh
+    └── kubernetes-phase6-aks/            # Phase 6 (Azure AKS)
+        ├── manifests/                    # ACR image URLs + PVCs
         ├── config/
         └── scripts/
-            └── test-workflow.sh
+            ├── setup-azure.sh            # Create Azure resources
+            ├── build-and-push.sh         # ACR Tasks cloud build
+            └── deploy-all.sh
 ```
 
 ### Why Embedded Services in Local?
