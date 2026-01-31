@@ -114,7 +114,7 @@ if [[ "$STATESTORE_BACKEND" == "mongodb" ]]; then
     kubectl wait --for=condition=available --timeout=300s deployment/mongodb -n dapr-demo
 fi
 
-# Deploy services (with ACR substitution)
+# Deploy services
 echo "Deploying services..."
 apply_manifest "$MANIFESTS_DIR/04-catalog-service.yaml"
 apply_manifest "$MANIFESTS_DIR/05-order-service.yaml"

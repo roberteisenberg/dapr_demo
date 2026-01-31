@@ -14,13 +14,12 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 1-A | Local: Redis → RabbitMQ | Available |
 | 2 | Docker Compose | Available |
 | 2-A | Docker: Redis → RabbitMQ | Available |
-| 3 | Kubernetes Base | Available |
+| 3 | Kubernetes Base + React Frontend with Status Panel | Available |
 | 3-A | Kubernetes: Pub/Sub Redis → RabbitMQ | Available |
 | 3-B | Kubernetes: State Redis → MongoDB | Available |
 | 4 | Observability (Zipkin) | Available |
 | 5 | Workflow (.NET Dapr Workflow) | Available |
 | 6 | Cloud (Azure AKS) and Terraform | Available |
-| 6.5 | Frontend Status Panel | Available |
 | 7 | AI Agents (Dapr Agents) | Planned |
 | 8 | End-to-end Security | Planned |
 | 9 | CI/CD (GitHub Actions) | Planned |
@@ -80,13 +79,18 @@ Switch pub/sub from Redis to RabbitMQ in Docker environment.
 
 ## Phase 3: Kubernetes Base
 
-Full Kubernetes deployment with minikube. Introduces the React web application with a real-time status panel showing all Dapr operations.
+Full Kubernetes deployment with minikube. Introduces the React web application with a real-time status panel that shows all Dapr operations as they happen.
 
 **What you'll learn:**
 - Dapr on Kubernetes (automatic sidecar injection via annotations)
 - NGINX Ingress with Dapr sidecar (API gateway pattern)
 - Kubernetes manifests (Deployments, Services, Ingress)
 - React web application with Dapr activity monitoring
+
+**Status Panel** (available in all Kubernetes phases):
+- Axios interceptors capture every service invocation with timing and status codes
+- **Activity tab**: Color-coded log (request/response/error) with duration (ms)
+- **Services tab**: Detected services with request counts and health status
 
 **Location**: [deployments/kubernetes/](deployments/kubernetes/)
 
@@ -157,16 +161,6 @@ Deploy to Azure Kubernetes Service with Terraform. Public access via Azure DNS l
 - Persistent storage with Azure Managed Disks
 
 **Location**: [deployments/kubernetes-phase6-aks/](deployments/kubernetes-phase6-aks/)
-
----
-
-## Phase 6.5: Frontend Status Panel
-
-Real-time activity drawer in the React web-app showing all Dapr operations as they happen. Axios interceptors automatically capture every service invocation with timing, status codes, and human-readable descriptions.
-
-- **Activity tab**: Color-coded log (request/response/error) with duration (ms)
-- **Services tab**: Detected services with request counts and health status
-- Backward compatible across all phases (3-6)
 
 ---
 

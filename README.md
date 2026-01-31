@@ -53,11 +53,10 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 |-------|-------------|--------|
 | 1, 1-A | [Local](deployments/local/) + Redis→RabbitMQ switch | Available |
 | 2, 2-A | [Docker](deployments/docker/) + Redis→RabbitMQ switch | Available |
-| 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + Pub/Sub swap + State store swap | Available |
+| 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + React frontend with status panel + infrastructure swaps | Available |
 | 4 | [Observability](deployments/kubernetes-phase4-observability/) (Zipkin tracing) | Available |
 | 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
 | 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
-| 6.5 | [Frontend Status Panel](deployments/kubernetes-phase6-aks/) (real-time Dapr activity drawer) | Available |
 | 7+ | AI Agents, Security, CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
@@ -68,11 +67,10 @@ Each phase builds on the previous, adding deployment complexity while keeping se
 
 1. **Local** - Run from source with `dapr run`. Learn Dapr basics.
 2. **Docker** - Containers with explicit Dapr sidecar management. Learn the sidecar pattern.
-3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend. Production patterns.
+3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend with real-time status panel.
 4. **Observability** - Zipkin distributed tracing. Visualize request flows across services.
 5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
 6. **Cloud (Azure AKS) and Terraform** - AKS cluster with public URL. No port-forward needed.
-6.5. **Frontend Status Panel** - Real-time activity drawer showing all Dapr operations with timing.
 
 The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
 

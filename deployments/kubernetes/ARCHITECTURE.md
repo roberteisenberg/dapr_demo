@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three polyglot microservices deployed to Kubernetes with Dapr sidecars automatically injected. NGINX Ingress with a Dapr sidecar serves as an API gateway for external access.
+Three polyglot microservices deployed to Kubernetes with Dapr sidecars automatically injected. NGINX Ingress with a Dapr sidecar serves as an API gateway for external access. An optional React web application provides a UI with a real-time status panel that monitors all Dapr operations.
 
 ## Architecture
 
@@ -163,3 +163,4 @@ The deploy script copies the appropriate template to the active component file a
 - **Kubernetes-native Dapr** - Components as K8s CRDs, standard manifests
 - **mTLS** - Automatic encryption between sidecars via Sentry
 - **Dapr dashboard** - Full visibility into services, components, configurations
+- **React status panel** - Real-time activity monitoring of Dapr operations via Axios interceptors

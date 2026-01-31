@@ -1,6 +1,6 @@
 # Phase 6: AKS Architecture
 
-This document explains the architectural differences when deploying Dapr to Azure Kubernetes Service compared to local minikube.
+This document explains the architectural differences when deploying Dapr to Azure Kubernetes Service compared to local minikube. The React frontend includes a real-time status panel that monitors all Dapr service invocations — this works across all Kubernetes phases (3-6).
 
 ## Azure Resources
 
@@ -9,43 +9,31 @@ All Azure resources are contained in a single resource group for easy management
 
 ```
 rg-dapr-demo/
-├── acrdaprdemo{random}     # Azure Container Registry
 ├── aks-dapr-demo           # AKS Cluster
 │   ├── MC_rg-dapr-demo_*   # Managed node resource group
-│   │   ├── Virtual Machines (2x Standard_B2s)
+│   │   ├── Virtual Machines (2x standard_dc2ads_v5)
 │   │   ├── Managed Disks (OS + PVCs)
 │   │   ├── Virtual Network
 │   │   └── Public IP (for LoadBalancer)
 ```
 
-### Azure Container Registry (ACR)
+### Docker Hub Images
 
-ACR stores Docker images that AKS pulls during deployment:
+Container images are hosted on Docker Hub rather than a private registry:
 
 ```
-acrdaprdemo{random}.azurecr.io/
-├── catalog-service:latest
-├── order-service:latest
-├── notification-service:latest
-├── workflow-service:latest
-└── web-app:latest
+reisenberg100/
+├── dapr-catalog-service:latest
+├── dapr-order-service:latest
+├── dapr-notification-service:latest
+├── dapr-workflow-service:latest
+└── dapr-web-app:latest
 ```
 
-**ACR Tasks** builds images in the cloud, eliminating the need for local Docker:
-
+Images are built locally with Docker and pushed to Docker Hub:
 ```bash
-# Instead of: docker build -t myimage . && docker push myimage
-az acr build --registry $ACR_NAME --image myimage:latest .
+./scripts/build-and-push.sh --with-frontend
 ```
-
-### AKS-ACR Integration
-
-When AKS is created with `--attach-acr`, Azure automatically:
-1. Creates a managed identity for AKS
-2. Grants `AcrPull` role to the identity
-3. Configures kubelet to authenticate with ACR
-
-This means pods can pull images without explicit credentials.
 
 ## Image Pull Changes
 
@@ -58,12 +46,12 @@ imagePullPolicy: Never  # Don't try to pull from registry
 
 ### AKS (Phase 6)
 ```yaml
-# Pulls from ACR
-image: {{ACR_LOGIN_SERVER}}/catalog-service:latest
+# Pulls from Docker Hub
+image: reisenberg100/dapr-catalog-service:latest
 imagePullPolicy: Always  # Always check for latest image
 ```
 
-The `{{ACR_LOGIN_SERVER}}` placeholder is replaced at deploy time with the actual ACR hostname (e.g., `acrdaprdemo123.azurecr.io`).
+Docker Hub public images require no authentication configuration on AKS.
 
 ## Public Access Pattern
 
@@ -178,8 +166,6 @@ The setup script generates a configuration file with Azure resource details:
 # .azure-config (generated, gitignored)
 RESOURCE_GROUP="rg-dapr-demo"
 LOCATION="eastus"
-ACR_NAME="acrdaprdemo12345"
-ACR_LOGIN_SERVER="acrdaprdemo12345.azurecr.io"
 AKS_NAME="aks-dapr-demo"
 DNS_LABEL="dapr-demo-12345"
 EXTERNAL_IP="20.85.xxx.xxx"
@@ -188,22 +174,6 @@ EXTERNAL_IP="20.85.xxx.xxx"
 Other scripts source this file to get the configuration:
 ```bash
 source "$SCRIPT_DIR/../.azure-config"
-```
-
-### Manifest Substitution
-Service manifests use a placeholder that's replaced at deploy time:
-
-```yaml
-# In manifest:
-image: {{ACR_LOGIN_SERVER}}/catalog-service:latest
-
-# After substitution:
-image: acrdaprdemo12345.azurecr.io/catalog-service:latest
-```
-
-The `deploy-all.sh` script handles this:
-```bash
-sed "s|{{ACR_LOGIN_SERVER}}|$ACR_LOGIN_SERVER|g" "$file" | kubectl apply -f -
 ```
 
 ## Security Considerations
@@ -219,15 +189,15 @@ sed "s|{{ACR_LOGIN_SERVER}}|$ACR_LOGIN_SERVER|g" "$file" | kubectl apply -f -
 2. **API Authentication**: Add Azure AD or API keys
 3. **Network Policies**: Restrict pod-to-pod communication
 4. **Managed Services**: Use Azure Redis Cache, Azure Service Bus
-5. **Secrets Management**: Use Azure Key Vault (Phase 7)
+5. **Secrets Management**: Use Azure Key Vault
 6. **Private Endpoints**: Keep services internal where possible
 
 ## Cost Optimization
 
 ### Right-sizing Nodes
-The demo uses `Standard_B2s` (burstable VMs) which are cost-effective for development:
-- 2 vCPUs, 4GB RAM
-- ~$30/month per node
+The demo uses `standard_dc2ads_v5` VMs (subscription restricted cheaper B-series):
+- 2 vCPUs, 8GB RAM
+- ~$70/month per node
 
 For production, consider:
 - Reserved instances (up to 72% savings)
