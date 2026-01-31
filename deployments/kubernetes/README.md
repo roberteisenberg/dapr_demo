@@ -25,14 +25,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of automatic si
 
 ### Coming from Docker Compose (Phase 2)?
 
-Clean up the Docker deployment first - it uses the same ports and you'll want to free up resources:
-
 ```bash
 cd deployments/docker
 docker-compose down -v --rmi local
 ```
-
-This removes containers, networks, volumes, and built images. Kubernetes builds its own images in minikube's Docker environment.
 
 ## Quick Start
 
@@ -162,6 +158,26 @@ Want a UI instead of curl commands? Add the React web application:
 ```
 
 Then open http://localhost:8080/ (with port-forward running).
+
+### Screenshots
+
+#### Product Catalog
+![Product Catalog](docs/react-form-fresh.png)
+
+#### Status Panel - Activity Log
+Click the purple button in the bottom-right to open the status panel. Shows all Dapr service invocations with timestamps, response times, and HTTP status codes.
+
+![Activity Log](docs/react-form-sidebbar-fresh.png)
+
+#### Quick Order - Activity
+Multiple Quick Orders showing catalog-service and order-service invocations. Products go out of stock as orders are placed.
+
+![Quick Order Activity](docs/react-form-simple-order-activity.png)
+
+#### Quick Order - Services
+Services tab showing detected Dapr services with request counts.
+
+![Quick Order Services](docs/react-form-simple-order-servicesy.png)
 
 ## Phase 3-A: Switch Pub/Sub to RabbitMQ
 

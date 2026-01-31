@@ -58,14 +58,11 @@ else
 
     RESOURCE_GROUP=$(terraform output -raw resource_group_name)
     AKS_NAME=$(terraform output -raw aks_cluster_name)
-    ACR_NAME=$(terraform output -raw acr_name)
-    ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
     LOCATION=$(terraform output -raw location)
 fi
 
 echo "  Resource Group: $RESOURCE_GROUP"
 echo "  AKS Cluster:    $AKS_NAME"
-echo "  ACR:            $ACR_LOGIN_SERVER"
 echo ""
 
 # Configure kubectl
@@ -151,8 +148,6 @@ cat > "$CONFIG_FILE" << EOF
 # Source this file in other scripts: source \$SCRIPT_DIR/../.azure-config
 RESOURCE_GROUP="$RESOURCE_GROUP"
 LOCATION="$LOCATION"
-ACR_NAME="$ACR_NAME"
-ACR_LOGIN_SERVER="$ACR_LOGIN_SERVER"
 AKS_NAME="$AKS_NAME"
 DNS_LABEL="$DNS_LABEL"
 EXTERNAL_IP="$EXTERNAL_IP"
@@ -166,7 +161,6 @@ echo ""
 echo "Resources:"
 echo "  Resource Group: $RESOURCE_GROUP"
 echo "  AKS Cluster:    $AKS_NAME"
-echo "  ACR:            $ACR_LOGIN_SERVER"
 echo ""
 echo "Public access:"
 echo "  IP Address: $EXTERNAL_IP"

@@ -1,62 +1,8 @@
 # Project Roadmap
 
-## Pending Work
-
-**Phase 6 (Azure AKS) - Ready to Test**
-
-Terraform implementation complete. To deploy:
-
-```bash
-cd deployments/kubernetes-phase6-aks/terraform
-terraform init
-terraform apply                                # Create AKS, ACR (~15 min)
-
-cd ..
-./scripts/setup-cluster.sh                     # Install Dapr, nginx-ingress
-./scripts/build-and-push.sh --with-frontend    # Build images in cloud
-./scripts/deploy-all.sh --with-frontend        # Deploy to AKS
-./scripts/test-services.sh                     # Test basic services
-./scripts/test-workflow.sh                     # Test saga pattern
-```
-
-Public URL will be displayed after setup-cluster.sh (no port-forward needed).
-
-Delete this section after testing is complete.
-
-**Phase 7 (AI Agents) - Research Notes**
-
-**Discovery: Dapr Agents is a full AI agent framework (Apache-2.0, open source)**
-
-GitHub: https://github.com/dapr/dapr-agents (598+ stars)
-
-| Aspect | Dapr Agents | LangChain |
-|--------|-------------|-----------|
-| LLM abstraction | ✅ YAML config swap | ✅ Code changes |
-| Agent loops | ✅ | ✅ |
-| Durability | ✅ Built-in (Workflow) | ❌ Needs external |
-| Multi-agent mesh | ✅ Pub/Sub routing | Partial |
-| Kubernetes-native | ✅ Scale 1000s of agents | ❌ |
-| Memory | ✅ State store backed | ✅ RAG, buffer, etc. |
-| Maturity | Newer (2025) | Production |
-| Ecosystem | Dapr | Huge |
-
-**Options for Phase 7:**
-1. **Dapr Agents only** - Stays in Dapr ecosystem, durability built-in
-2. **LangChain only** - Richer AI patterns, larger community
-3. **Compare both** - Same use case, different frameworks
-
-**Dapr AI Stack:**
-- Dapr Conversation API (alpha) - LLM abstraction building block
-- Dapr Agents - Full agent framework built on Dapr primitives
-- Diagrid Catalyst - Managed infrastructure (paid)
-
-**New service:** `services/ai-agent-service/` (Python)
-
----
-
 ## Overview
 
-This project demonstrates Dapr microservices across deployment environments, progressing from local development to production-ready Kubernetes.
+This project demonstrates Dapr microservices across deployment environments, progressing from local development to production-ready cloud Kubernetes.
 
 Each deployment type includes a sub-phase demonstrating **infrastructure portability** - switching pub/sub from Redis to RabbitMQ without code changes.
 
@@ -73,9 +19,10 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 3-B | Kubernetes: State Redis → MongoDB | Available |
 | 4 | Observability (Zipkin) | Available |
 | 5 | Workflow (.NET Dapr Workflow) | Available |
-| 6 | Cloud (Azure AKS) | Available |
+| 6 | Cloud (Azure AKS) and Terraform | Available |
+| 6.5 | Frontend Status Panel | Available |
 | 7 | AI Agents (Dapr Agents) | Planned |
-| 8 | End-to-end security from React app to AKS cluster | Planned |
+| 8 | End-to-end Security | Planned |
 | 9 | CI/CD (GitHub Actions) | Planned |
 | 10 | API Management | Planned |
 
@@ -133,93 +80,15 @@ Switch pub/sub from Redis to RabbitMQ in Docker environment.
 
 ## Phase 3: Kubernetes Base
 
-Full Kubernetes deployment with minikube.
+Full Kubernetes deployment with minikube. Introduces the React web application with a real-time status panel showing all Dapr operations.
 
 **What you'll learn:**
 - Dapr on Kubernetes (automatic sidecar injection via annotations)
 - NGINX Ingress with Dapr sidecar (API gateway pattern)
 - Kubernetes manifests (Deployments, Services, Ingress)
-- Building images for minikube's local Docker registry
-- React web application frontend
+- React web application with Dapr activity monitoring
 
 **Location**: [deployments/kubernetes/](deployments/kubernetes/)
-
-**Prerequisites:**
-- Docker Desktop (running, WSL2 backend)
-- minikube
-- kubectl
-- Dapr CLI
-- Helm (for nginx-ingress)
-
-### Implementation Notes
-
-**Cluster setup:**
-1. `minikube start --driver=docker --cpus=2 --memory=4096`
-2. `dapr init -k` (installs Dapr control plane: operator, sentry, placement, dashboard)
-3. Install nginx-ingress via Helm with Dapr sidecar annotations (API gateway pattern)
-
-**Key architectural difference from Docker Compose:**
-- No explicit sidecar containers - Dapr auto-injects via pod annotations:
-  ```yaml
-  annotations:
-    dapr.io/enabled: "true"
-    dapr.io/app-id: "catalog-service"
-    dapr.io/app-port: "8080"
-  ```
-- No Kubernetes Service objects needed for backend services (Dapr handles discovery)
-- `imagePullPolicy: Never` (uses minikube's local Docker registry via `eval $(minikube docker-env)`)
-- `dapr dashboard -k` works (full control plane available)
-
-**Services to deploy:**
-- The 3 core services from `services/` (same Dockerfiles as Docker Compose)
-- React web-app frontend (new - needs `frontend/web-app/` with Dockerfile)
-- NGINX Ingress controller with Dapr sidecar as API gateway
-
-**Ingress routing pattern:**
-- `/v1.0/*` → Dapr sidecar on ingress controller (service invocation API)
-- `/*` → web-app (React frontend)
-
-**Infrastructure:**
-- Redis (state store + pub/sub) - deployed as K8s Deployment+Service
-- Dapr components as K8s manifests (with namespace: dapr-demo)
-
-**Manifest numbering convention (from old project):**
-```
-manifests/
-├── 00-namespace.yaml
-├── 01-redis.yaml
-├── 02-rabbitmq.yaml           # Phase 3-A
-├── 02-mongodb.yaml            # Phase 3-B
-├── 03-components/
-│   ├── statestore.yaml        # Redis (default)
-│   ├── pubsub.yaml            # Redis (default)
-│   └── templates/
-│       ├── pubsub-redis.yaml
-│       ├── pubsub-rabbitmq.yaml
-│       ├── statestore-redis.yaml
-│       └── statestore-mongodb.yaml
-├── 04-catalog-service.yaml
-├── 05-order-service.yaml
-├── 06-notification-service.yaml
-├── 08-web-app.yaml
-└── 09-ingress.yaml
-```
-
-**Scripts needed:**
-- `scripts/setup-cluster.sh` - Start minikube, install Dapr, install nginx-ingress
-- `scripts/build-images.sh` - Build all images in minikube's Docker env
-- `scripts/deploy-all.sh` - Apply all manifests in order, wait for readiness
-- `scripts/cleanup.sh` - Remove all K8s resources
-- `scripts/test-services.sh` - Test via ingress endpoint
-
-**Reference implementation:** `C:\Projects\dapr_20260102\deployments\kubernetes\`
-(Caution: old project bundles Zipkin and workflow-service which belong to Phase 4 and 5 respectively)
-
-**Transition from Docker Compose:**
-```bash
-cd deployments/docker
-docker-compose down -v
-```
 
 ---
 
@@ -227,22 +96,9 @@ docker-compose down -v
 
 Switch pub/sub from Redis to RabbitMQ in Kubernetes without code changes.
 
-**What you'll learn:**
-- Dapr pub/sub component abstraction
-- Swapping messaging infrastructure in Kubernetes
-
 **How:**
 ```bash
-# Deploy RabbitMQ
-kubectl apply -f manifests/02-rabbitmq.yaml
-kubectl wait --for=condition=available --timeout=300s deployment/rabbitmq -n dapr-demo
-
-# Swap component
-cp manifests/03-components/templates/pubsub-rabbitmq.yaml manifests/03-components/pubsub.yaml
-kubectl apply -f manifests/03-components/
-
-# Restart services to pick up new component
-kubectl rollout restart deployment -n dapr-demo
+./scripts/deploy-all.sh --pubsub rabbitmq
 ```
 
 ---
@@ -251,50 +107,9 @@ kubectl rollout restart deployment -n dapr-demo
 
 Switch state store from Redis to MongoDB in Kubernetes without code changes.
 
-**What you'll learn:**
-- Dapr state store component abstraction
-- Swapping from a key-value store (Redis) to a document database (MongoDB) with zero code changes
-
 **How:**
 ```bash
-# Deploy MongoDB
-kubectl apply -f manifests/02-mongodb.yaml
-kubectl wait --for=condition=available --timeout=300s deployment/mongodb -n dapr-demo
-
-# Swap component
-cp manifests/03-components/templates/statestore-mongodb.yaml manifests/03-components/statestore.yaml
-kubectl apply -f manifests/03-components/
-
-# Restart services to pick up new component
-kubectl rollout restart deployment -n dapr-demo
-```
-
-**Manifest templates needed:**
-```
-manifests/03-components/templates/
-├── pubsub-redis.yaml
-├── pubsub-rabbitmq.yaml
-├── statestore-redis.yaml
-└── statestore-mongodb.yaml
-```
-
-**MongoDB statestore component:**
-```yaml
-apiVersion: dapr.io/v1alpha1
-kind: Component
-metadata:
-  name: statestore
-  namespace: dapr-demo
-spec:
-  type: state.mongodb
-  version: v1
-  metadata:
-  - name: host
-    value: mongodb:27017
-  - name: databaseName
-    value: daprdb
-  - name: actorStateStore
-    value: "true"
+./scripts/deploy-all.sh --statestore mongodb
 ```
 
 ---
@@ -307,22 +122,8 @@ Add Zipkin distributed tracing to the Kubernetes deployment. Dapr sidecars autom
 - Dapr tracing configuration
 - Zipkin distributed tracing UI
 - Visualizing request flows across microservices
-- Debugging latency and errors in distributed systems
 
 **Location**: [deployments/kubernetes-phase4-observability/](deployments/kubernetes-phase4-observability/)
-
-**Key changes from Phase 3:**
-- `manifests/10-zipkin.yaml` - Zipkin deployment
-- `manifests/03-components/tracing.yaml` - Dapr tracing Configuration
-- Service manifests add `dapr.io/config: "tracing"` annotation
-
-**Dashboards available:**
-
-| Dashboard | Command | URL |
-|-----------|---------|-----|
-| Zipkin | `kubectl port-forward -n dapr-demo svc/zipkin 9411:9411` | http://localhost:9411 |
-| Dapr | `dapr dashboard -k -n dapr-demo` | http://localhost:8080 |
-| Minikube | `minikube dashboard` | Opens automatically |
 
 ---
 
@@ -334,11 +135,8 @@ Add a .NET Dapr Workflow service for order orchestration using the saga pattern 
 - Dapr Workflow SDK for .NET
 - Saga pattern for distributed transactions
 - Compensation logic for rollback
-- Workflow state management
 
 **Location**: [deployments/kubernetes-phase5-workflow/](deployments/kubernetes-phase5-workflow/)
-
-**New service**: `services/workflow-service/` (.NET 8.0)
 
 **Saga steps:**
 1. ValidateOrderActivity - Validate order fields
@@ -346,78 +144,43 @@ Add a .NET Dapr Workflow service for order orchestration using the saga pattern 
 3. ProcessPaymentActivity - Simulate payment (fails if >$10k)
 4. NotifyCustomerActivity - Publish to pub/sub
 
-**Key changes from Phase 4:**
-- `services/workflow-service/` - New .NET 8.0 Dapr Workflow service
-- `manifests/07-workflow-service.yaml` - Kubernetes deployment
-- `scripts/test-workflow.sh` - Tests saga pattern and compensation
-
 ---
 
-## Phase 6: Azure AKS
+## Phase 6: Cloud (Azure AKS) and Terraform
 
-Deploy to Azure Kubernetes Service with Azure Container Registry. Public access via Azure DNS label - no port-forward needed.
+Deploy to Azure Kubernetes Service with Terraform. Public access via Azure DNS label - no port-forward needed.
 
 **What you'll learn:**
-- Azure CLI for resource management
-- Azure Container Registry with ACR Tasks (cloud builds)
+- Terraform for Azure infrastructure (AKS, Resource Group)
 - AKS cluster creation and Dapr installation
 - Public access patterns with LoadBalancer and DNS labels
 - Persistent storage with Azure Managed Disks
 
 **Location**: [deployments/kubernetes-phase6-aks/](deployments/kubernetes-phase6-aks/)
 
-**Key changes from Phase 5:**
-- `scripts/setup-azure.sh` - Create Azure resources (RG, ACR, AKS)
-- `scripts/build-and-push.sh` - Build images in cloud with ACR Tasks
-- Manifests use `{{ACR_LOGIN_SERVER}}` placeholder and `imagePullPolicy: Always`
-- Infrastructure manifests include PersistentVolumeClaims for Azure Managed Disks
-- Ingress uses LoadBalancer with Azure DNS label for public URL
+---
 
-**Cost estimate:** ~$70/month (delete resources when not in use)
+## Phase 6.5: Frontend Status Panel
+
+Real-time activity drawer in the React web-app showing all Dapr operations as they happen. Axios interceptors automatically capture every service invocation with timing, status codes, and human-readable descriptions.
+
+- **Activity tab**: Color-coded log (request/response/error) with duration (ms)
+- **Services tab**: Detected services with request counts and health status
+- Backward compatible across all phases (3-6)
 
 ---
 
 ## Phase 7: AI Agents (Dapr Agents)
 
-Build AI agents using **Dapr Agents** - an open source framework (Apache-2.0) for durable, scalable AI agent orchestration.
-
-**GitHub:** https://github.com/dapr/dapr-agents
+Build AI agents using **Dapr Agents** - an open source framework for durable, scalable AI agent orchestration.
 
 **What you'll learn:**
 - Dapr Agents framework for AI orchestration
 - Durable agent execution (survives failures, resumes with context)
 - Multi-agent systems with Pub/Sub mesh routing
 - LLM provider abstraction (swap Claude ↔ OpenAI via YAML)
-- Kubernetes-native scaling (1000s of agents)
 
-**Why Dapr Agents vs LangChain:**
-
-| Aspect | Dapr Agents | LangChain |
-|--------|-------------|-----------|
-| Durability | ✅ Built-in | ❌ Needs external |
-| Multi-agent mesh | ✅ Pub/Sub | Partial |
-| Kubernetes-native | ✅ | ❌ |
-| Provider swap | ✅ YAML | Code changes |
-| Ecosystem | Dapr | Larger |
-
-**Architecture:**
-```
-┌─────────────────────────────────────────────────────┐
-│                  Dapr Agents                        │
-│  ┌───────────────────────────────────────────────┐  │
-│  │  Agent: OrderAssistant                        │  │
-│  │    └─ Tools: catalog-service, order-service   │  │
-│  │    └─ Memory: Dapr state store                │  │
-│  │    └─ LLM: Claude (via Conversation API)      │  │
-│  └───────────────────────────────────────────────┘  │
-│                                                     │
-│  Built on: Workflow │ Conversation │ Pub/Sub │ State│
-└─────────────────────────────────────────────────────┘
-```
-
-**New service:** `services/ai-agent-service/` (Python with Dapr Agents SDK)
-
-**Location:** `deployments/kubernetes-phase7-ai-agents/`
+**New service:** `services/ai-agent-service/` (Python)
 
 ---
 
@@ -462,43 +225,14 @@ dapr_demo/
 │   └── web-app/                   # React SPA + Dockerfile
 └── deployments/
     ├── local/                     # Phase 1, 1-A
-    │   ├── catalog-service/       # Embedded (no Dockerfile)
-    │   ├── order-service/
-    │   ├── notification-service/
-    │   └── components/
     ├── docker/                    # Phase 2, 2-A
-    │   ├── docker-compose.yml
-    │   └── components/
-    ├── kubernetes/                # Phase 3 (base)
-    │   ├── manifests/
-    │   ├── config/
-    │   └── scripts/
-    ├── kubernetes-phase4-observability/  # Phase 4 (adds Zipkin)
-    │   ├── manifests/
-    │   │   └── 10-zipkin.yaml
-    │   │   └── 03-components/tracing.yaml
-    │   ├── config/
-    │   └── scripts/
-    ├── kubernetes-phase5-workflow/       # Phase 5 (adds Dapr Workflow)
-    │   ├── manifests/
-    │   │   └── 07-workflow-service.yaml
-    │   ├── config/
-    │   └── scripts/
-    │       └── test-workflow.sh
-    └── kubernetes-phase6-aks/            # Phase 6 (Azure AKS)
-        ├── manifests/                    # ACR image URLs + PVCs
+    ├── kubernetes/                # Phase 3, 3-A, 3-B
+    ├── kubernetes-phase4-observability/
+    ├── kubernetes-phase5-workflow/
+    └── kubernetes-phase6-aks/
+        ├── terraform/             # AKS + Resource Group
+        ├── manifests/
         ├── config/
+        ├── docs/                  # Screenshots
         └── scripts/
-            ├── setup-azure.sh            # Create Azure resources
-            ├── build-and-push.sh         # ACR Tasks cloud build
-            └── deploy-all.sh
 ```
-
-### Why Embedded Services in Local?
-
-Local deployment includes service source code directly because:
-- Runs services from source (`dapr run`) - no Docker needed
-- Self-contained - everything in one directory
-- No Dockerfiles required
-
-Docker and Kubernetes use a shared `services/` directory with Dockerfiles.

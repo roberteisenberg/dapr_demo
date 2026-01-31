@@ -106,6 +106,18 @@ kubectl port-forward -n dapr-demo svc/api-gateway-ingress-nginx-controller 8080:
 - "Quick Order" - uses order-service directly
 - "Workflow Order" - uses saga pattern with compensation
 
+### Screenshots
+
+#### Saga Workflow - Activity
+Saga workflow execution with the activity log showing each Dapr call in real-time, including workflow-service polling.
+
+![Workflow Activity](docs/react-form-saga-andactiity.png)
+
+#### Saga Workflow - Services
+Services tab after workflow execution showing workflow-service alongside catalog and order services. The notification-service is noted as event-driven (pub/sub subscriber, not directly observable).
+
+![Workflow Services](docs/react-form-saga-services.png)
+
 **API (curl/scripts):**
 ```bash
 ./scripts/test-workflow.sh

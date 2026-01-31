@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { addLog, parseDaprUrl, formatDescription, LogType } from './statusLog';
 
 // API base URL - uses proxy in development, direct URL in production
 const API_BASE_URL = process.env.REACT_APP_API_URL || '';
@@ -9,6 +10,59 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor - log outgoing Dapr calls
+api.interceptors.request.use((config) => {
+  config._startTime = Date.now();
+  const daprInfo = parseDaprUrl(config.url);
+  const httpMethod = (config.method || 'GET').toUpperCase();
+  addLog({
+    type: LogType.REQUEST,
+    httpMethod,
+    url: config.url,
+    daprInfo,
+    description: formatDescription(httpMethod, daprInfo),
+  });
+  return config;
+});
+
+// Response interceptor - log results with duration
+api.interceptors.response.use(
+  (response) => {
+    const duration = response.config._startTime
+      ? Date.now() - response.config._startTime
+      : null;
+    const daprInfo = parseDaprUrl(response.config.url);
+    const httpMethod = (response.config.method || 'GET').toUpperCase();
+    addLog({
+      type: LogType.RESPONSE,
+      httpMethod,
+      url: response.config.url,
+      status: response.status,
+      daprInfo,
+      description: formatDescription(httpMethod, daprInfo),
+      duration,
+    });
+    return response;
+  },
+  (error) => {
+    const config = error.config || {};
+    const duration = config._startTime ? Date.now() - config._startTime : null;
+    const daprInfo = parseDaprUrl(config.url);
+    const httpMethod = (config.method || 'GET').toUpperCase();
+    addLog({
+      type: LogType.ERROR,
+      httpMethod,
+      url: config.url,
+      status: error.response?.status,
+      daprInfo,
+      description: formatDescription(httpMethod, daprInfo),
+      duration,
+      error: error.message,
+    });
+    return Promise.reject(error);
+  }
+);
 
 // Dapr service invocation helper
 const daprInvoke = (serviceId, method, data = null, httpMethod = 'GET') => {

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Build images and push to Azure Container Registry
-# Uses local Docker to build, then pushes to ACR
+# Build images and push to Docker Hub
+# Uses local Docker to build, then pushes to Docker Hub
 
 set -e
 
@@ -8,15 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICES_DIR="$SCRIPT_DIR/../../../services"
 FRONTEND_DIR="$SCRIPT_DIR/../../../frontend"
 
-# Load Azure configuration
-CONFIG_FILE="$SCRIPT_DIR/../.azure-config"
-if [ -f "$CONFIG_FILE" ]; then
-    source "$CONFIG_FILE"
-else
-    echo "ERROR: Azure configuration not found."
-    echo "Run ./scripts/setup-cluster.sh first."
-    exit 1
-fi
+DOCKER_REGISTRY="reisenberg100"
 
 # Parse arguments
 WITH_FRONTEND=false
@@ -35,10 +27,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "========================================="
-echo "Building Images for Azure Container Registry"
+echo "Building Images for Docker Hub"
 echo "========================================="
 echo ""
-echo "ACR: $ACR_LOGIN_SERVER"
+echo "Registry: $DOCKER_REGISTRY"
 echo "Frontend: $WITH_FRONTEND"
 echo ""
 
@@ -51,50 +43,46 @@ if ! docker info &> /dev/null; then
 fi
 echo "  Docker: OK"
 
-# Login to ACR
-echo "Logging in to ACR..."
-az acr login --name "$ACR_NAME"
-echo "  ACR login successful"
+# Verify Docker Hub login
+echo "Verifying Docker Hub login..."
+if ! docker info 2>/dev/null | grep -q "Username"; then
+    echo "WARNING: Not logged in to Docker Hub."
+    echo "Run 'docker login' first if push fails."
+fi
 echo ""
 
 # Build and push each service
-echo "Building and pushing catalog-service..."
-docker build -t "$ACR_LOGIN_SERVER/catalog-service:latest" "$SERVICES_DIR/catalog-service"
-docker push "$ACR_LOGIN_SERVER/catalog-service:latest"
+SERVICES=("catalog-service" "order-service" "notification-service" "workflow-service")
 
-echo ""
-echo "Building and pushing order-service..."
-docker build -t "$ACR_LOGIN_SERVER/order-service:latest" "$SERVICES_DIR/order-service"
-docker push "$ACR_LOGIN_SERVER/order-service:latest"
-
-echo ""
-echo "Building and pushing notification-service..."
-docker build -t "$ACR_LOGIN_SERVER/notification-service:latest" "$SERVICES_DIR/notification-service"
-docker push "$ACR_LOGIN_SERVER/notification-service:latest"
-
-echo ""
-echo "Building and pushing workflow-service..."
-docker build -t "$ACR_LOGIN_SERVER/workflow-service:latest" "$SERVICES_DIR/workflow-service"
-docker push "$ACR_LOGIN_SERVER/workflow-service:latest"
+for SERVICE in "${SERVICES[@]}"; do
+    echo "Building and pushing $SERVICE..."
+    docker build -t "$DOCKER_REGISTRY/dapr-$SERVICE:latest" "$SERVICES_DIR/$SERVICE"
+    docker push "$DOCKER_REGISTRY/dapr-$SERVICE:latest"
+    echo ""
+done
 
 if [[ "$WITH_FRONTEND" == "true" ]]; then
-    echo ""
     echo "Building and pushing web-app..."
     if [[ -d "$FRONTEND_DIR/web-app" ]]; then
-        docker build -t "$ACR_LOGIN_SERVER/web-app:latest" "$FRONTEND_DIR/web-app"
-        docker push "$ACR_LOGIN_SERVER/web-app:latest"
+        docker build -t "$DOCKER_REGISTRY/dapr-web-app:latest" "$FRONTEND_DIR/web-app"
+        docker push "$DOCKER_REGISTRY/dapr-web-app:latest"
     else
         echo "  WARNING: frontend/web-app/ not found, skipping"
     fi
+    echo ""
 fi
 
-echo ""
 echo "========================================="
 echo "Build Complete!"
 echo "========================================="
 echo ""
-echo "Images in ACR:"
-az acr repository list --name "$ACR_NAME" --output table
+echo "Images pushed to Docker Hub ($DOCKER_REGISTRY):"
+for SERVICE in "${SERVICES[@]}"; do
+    echo "  - $DOCKER_REGISTRY/dapr-$SERVICE:latest"
+done
+if [[ "$WITH_FRONTEND" == "true" ]]; then
+    echo "  - $DOCKER_REGISTRY/dapr-web-app:latest"
+fi
 echo ""
 echo "Next step: ./scripts/deploy-all.sh"
 echo "========================================="

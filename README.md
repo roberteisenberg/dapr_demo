@@ -1,6 +1,8 @@
 # Dapr Microservices Demo
 
-A hands-on project demonstrating Dapr microservices from local development to Kubernetes deployment.
+A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered agents built on Dapr primitives.
+
+> **Note:** This repository is primarily a working reference implementation. The documentation and walkthroughs were added as a companion guide and have not been through formal tutorial-level QA. If you run into gaps or inconsistencies, the code and scripts themselves are the source of truth.
 
 ## What You'll Learn
 
@@ -8,10 +10,12 @@ A hands-on project demonstrating Dapr microservices from local development to Ku
 - **Polyglot Services**: Go, Python, Node.js, .NET working together
 - **Dapr Without Kubernetes**: Local development and Docker Compose with explicit sidecars
 - **Dapr With Kubernetes**: Minikube with auto-injected sidecars, scaling to Azure AKS
+- **Infrastructure as Code**: Terraform for provisioning Azure AKS clusters
 - **API Gateway Patterns**: Simple routing to NGINX Ingress with Dapr sidecar
 - **Distributed Tracing**: Zipkin integration for visualizing request flows
 - **Saga Pattern**: Dapr Workflow with automatic compensation on failure
 - **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
+- **AI Agents**: Dapr Agents framework for durable, scalable AI agent orchestration (planned)
 - **Enterprise Security**: End-to-end security from React app to AKS cluster (planned)
 - **CI/CD**: GitHub Actions pipelines (planned)
 - **API Management**: Azure APIM gateway (planned)
@@ -52,7 +56,9 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + Pub/Sub swap + State store swap | Available |
 | 4 | [Observability](deployments/kubernetes-phase4-observability/) (Zipkin tracing) | Available |
 | 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
-| 6+ | Cloud, Secrets, CI/CD, API Management | Planned |
+| 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
+| 6.5 | [Frontend Status Panel](deployments/kubernetes-phase6-aks/) (real-time Dapr activity drawer) | Available |
+| 7+ | AI Agents, Security, CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
 
@@ -65,6 +71,8 @@ Each phase builds on the previous, adding deployment complexity while keeping se
 3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend. Production patterns.
 4. **Observability** - Zipkin distributed tracing. Visualize request flows across services.
 5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
+6. **Cloud (Azure AKS) and Terraform** - AKS cluster with public URL. No port-forward needed.
+6.5. **Frontend Status Panel** - Real-time activity drawer showing all Dapr operations with timing.
 
 The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
 
