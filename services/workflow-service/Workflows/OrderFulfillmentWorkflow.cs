@@ -10,8 +10,9 @@ namespace WorkflowService.Workflows;
 /// Steps:
 /// 1. Validate order data
 /// 2. Reserve inventory (with compensation: release)
-/// 3. Process payment (triggers compensation on failure)
-/// 4. Notify customer
+/// 3. Check fraud via AI (Dapr Conversation API → Claude)
+/// 4. Process payment (triggers compensation on failure)
+/// 5. Notify customer
 /// </summary>
 public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
 {
@@ -49,8 +50,30 @@ public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
                 Message: $"Inventory reservation failed: {reservation.Message}");
         }
 
-        // Step 3: Process payment
-        Console.WriteLine($"[Workflow] Step 3: Processing payment for order {input.OrderId}");
+        // Step 3: Check fraud (AI-powered via Dapr Conversation API)
+        Console.WriteLine($"[Workflow] Step 3: Checking fraud for order {input.OrderId}");
+        var fraudResult = await context.CallActivityAsync<FraudCheckResult>(
+            nameof(CheckFraudActivity),
+            (input, reservation));
+
+        if (!fraudResult.Approved)
+        {
+            // COMPENSATION: Release reserved inventory
+            Console.WriteLine($"[Workflow] Order {input.OrderId} flagged for fraud ({fraudResult.RiskLevel} risk), triggering compensation");
+            await context.CallActivityAsync<bool>(
+                nameof(ReleaseInventoryActivity),
+                reservation);
+
+            return new OrderResult(
+                input.OrderId,
+                Status: "Failed",
+                Message: $"Order flagged for fraud ({fraudResult.RiskLevel} risk): {fraudResult.Reasoning}. Inventory has been released.");
+        }
+
+        Console.WriteLine($"[Workflow] Fraud check passed for order {input.OrderId}: {fraudResult.RiskLevel} risk");
+
+        // Step 4: Process payment
+        Console.WriteLine($"[Workflow] Step 4: Processing payment for order {input.OrderId}");
         var paymentResult = await context.CallActivityAsync<PaymentResult>(
             nameof(ProcessPaymentActivity),
             (input, reservation));
@@ -69,9 +92,9 @@ public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
                 Message: $"Payment failed: {paymentResult.Message}. Inventory has been released.");
         }
 
-        // Step 4: Notify customer (fire-and-forget)
+        // Step 5: Notify customer (fire-and-forget)
         var totalAmount = (reservation.UnitPrice ?? 0) * input.Quantity;
-        Console.WriteLine($"[Workflow] Step 4: Notifying customer for order {input.OrderId}");
+        Console.WriteLine($"[Workflow] Step 5: Notifying customer for order {input.OrderId}");
 
         var notificationRequest = new NotificationRequest(
             input.OrderId,

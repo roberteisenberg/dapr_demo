@@ -20,7 +20,8 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 4 | Observability (Zipkin) | Available |
 | 5 | Workflow (.NET Dapr Workflow) | Available |
 | 6 | Cloud (Azure AKS) and Terraform | Available |
-| 7 | AI Agents (Dapr Agents) | Planned |
+| 7 | AI Integration (manual "Copy for AI") | Available |
+| 7-A | AI Fraud Check in Order Workflow | Available |
 | 8 | End-to-end Security | Planned |
 | 9 | CI/CD (GitHub Actions) | Planned |
 | 10 | API Management | Planned |
@@ -164,17 +165,36 @@ Deploy to Azure Kubernetes Service with Terraform. Public access via Azure DNS l
 
 ---
 
-## Phase 7: AI Agents (Dapr Agents)
+## Phase 7: AI Integration (Manual)
 
-Build AI agents using **Dapr Agents** - an open source framework for durable, scalable AI agent orchestration.
+"Copy for AI" button in the React frontend exports catalog and order data as a structured prompt for Claude Desktop. Also adds `GET /orders` endpoint to order-service.
 
 **What you'll learn:**
-- Dapr Agents framework for AI orchestration
-- Durable agent execution (survives failures, resumes with context)
-- Multi-agent systems with Pub/Sub mesh routing
-- LLM provider abstraction (swap Claude ↔ OpenAI via YAML)
+- Exporting microservice data as a structured AI prompt
+- Using Claude to analyze business data for product recommendations
 
-**New service:** `services/ai-agent-service/` (Python)
+**Location**: [deployments/kubernetes-phase7-ai/](deployments/kubernetes-phase7-ai/)
+
+---
+
+## Phase 7-A: AI Fraud Check in Order Workflow
+
+Add an AI-powered fraud detection step to the order fulfillment saga. `CheckFraudActivity` calls Claude via the Dapr Conversation API to assess each order before payment. If flagged, the workflow compensates (releases inventory) and rejects the order.
+
+**What you'll learn:**
+- Adding an LLM call to a deterministic Dapr Workflow
+- Dapr Conversation API — provider-agnostic LLM abstraction
+- API key management via Kubernetes secrets + Dapr `secretKeyRef`
+- Graceful degradation when AI is unavailable
+
+**Saga steps (updated from Phase 5):**
+1. ValidateOrderActivity
+2. ReserveInventoryActivity
+3. CheckFraudActivity (NEW — Dapr Conversation API → Claude)
+4. ProcessPaymentActivity
+5. NotifyCustomerActivity
+
+**Location**: [deployments/kubernetes-phase7-ai/](deployments/kubernetes-phase7-ai/)
 
 ---
 

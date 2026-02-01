@@ -104,6 +104,11 @@ export const getOrder = async (orderId) => {
   return response.data;
 };
 
+export const getOrders = async () => {
+  const response = await daprInvoke('order-service', '/orders', null, 'GET');
+  return response.data;
+};
+
 // Workflow API - calls workflow-service via Dapr (Phase 5+)
 // Uses saga pattern with automatic compensation on failure
 export const startWorkflow = async (orderData) => {

@@ -14,6 +14,7 @@ dapr_app = App()
 DAPR_STORE_NAME = "statestore"
 PUBSUB_NAME = "pubsub"
 TOPIC_NAME = "orders"
+ORDER_INDEX_KEY = "order-index"
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -76,6 +77,16 @@ def create_order():
             )
             logger.info(f"Order saved to state store: {order_id}")
 
+            # Update order index
+            try:
+                index_result = d.get_state(store_name=DAPR_STORE_NAME, key=ORDER_INDEX_KEY)
+                order_ids = json.loads(index_result.data) if index_result.data else []
+            except Exception:
+                order_ids = []
+            if order_id not in order_ids:
+                order_ids.append(order_id)
+                d.save_state(store_name=DAPR_STORE_NAME, key=ORDER_INDEX_KEY, value=json.dumps(order_ids))
+
             # Publish OrderCreated event
             d.publish_event(
                 pubsub_name=PUBSUB_NAME,
@@ -89,6 +100,26 @@ def create_order():
 
     except Exception as e:
         logger.error(f"Error creating order: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/orders', methods=['GET'])
+def list_orders():
+    """List all orders"""
+    try:
+        with DaprClient() as d:
+            index_result = d.get_state(store_name=DAPR_STORE_NAME, key=ORDER_INDEX_KEY)
+            order_ids = json.loads(index_result.data) if index_result.data else []
+
+            orders = []
+            for oid in order_ids:
+                result = d.get_state(store_name=DAPR_STORE_NAME, key=oid)
+                if result.data:
+                    orders.append(json.loads(result.data))
+
+            return jsonify(orders), 200
+
+    except Exception as e:
+        logger.error(f"Error listing orders: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/orders/<order_id>', methods=['GET'])

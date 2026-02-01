@@ -1,8 +1,8 @@
 # Dapr Microservices Demo
 
-A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered agents built on Dapr primitives.
+A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered recommendations utilizing Dapr services that call the Claude API to automatically recommend new products.
 
-> **Note:** This repository is primarily a working reference implementation. The documentation and walkthroughs were added as a companion guide and have not been through formal tutorial-level QA. If you run into gaps or inconsistencies, the code and scripts themselves are the source of truth.
+> **Note:** This repository is primarily a working reference implementation. It contains separate directories for each phase allowing comparing the implementation code to each topic. The documentation and walkthroughs were added as a companion guide and have not been through formal tutorial-level QA. If you run into gaps or inconsistencies, the code and scripts themselves are the source of truth.
 
 ## What You'll Learn
 
@@ -57,7 +57,8 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | 4 | [Observability](deployments/kubernetes-phase4-observability/) (Zipkin tracing) | Available |
 | 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
 | 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
-| 7+ | AI Agents, Security, CI/CD, API Management | Planned |
+| 7, 7-A | [AI Integration](deployments/kubernetes-phase7-ai/) (Manual "Copy for AI" + Fraud Check via Dapr Conversation API) | Available |
+| 8+ | Security, CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
 
@@ -71,6 +72,7 @@ Each phase builds on the previous, adding deployment complexity while keeping se
 4. **Observability** - Zipkin distributed tracing. Visualize request flows across services.
 5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
 6. **Cloud (Azure AKS) and Terraform** - AKS cluster with public URL. No port-forward needed.
+7. **AI Integration** - "Copy for AI" button for manual Claude analysis, plus AI-powered fraud check in the order workflow via Dapr Conversation API.
 
 The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
 

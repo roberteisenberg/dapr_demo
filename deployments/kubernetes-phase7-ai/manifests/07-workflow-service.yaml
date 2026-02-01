@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-service
+  namespace: dapr-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workflow-service
+  template:
+    metadata:
+      labels:
+        app: workflow-service
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "workflow-service"
+        dapr.io/app-port: "8083"
+        dapr.io/log-level: "info"
+        dapr.io/config: "tracing"
+    spec:
+      containers:
+      - name: workflow-service
+        image: workflow-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8083
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+# No Kubernetes Service needed - accessed via Dapr service invocation

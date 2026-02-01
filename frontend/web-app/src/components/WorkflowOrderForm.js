@@ -82,6 +82,7 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
     const steps = [
       { name: 'Validate Order', status: 'pending' },
       { name: 'Reserve Inventory', status: 'pending' },
+      { name: 'Check Fraud', status: 'pending' },
       { name: 'Process Payment', status: 'pending' },
       { name: 'Send Notification', status: 'pending' },
     ];
@@ -97,13 +98,18 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
       const message = output.message || '';
       if (message.includes('validation')) {
         steps[0].status = 'failed';
-      } else if (message.includes('Inventory')) {
+      } else if (message.includes('Inventory') && !message.includes('fraud')) {
         steps[0].status = 'completed';
         steps[1].status = message.includes('released') ? 'compensated' : 'failed';
-      } else if (message.includes('Payment')) {
+      } else if (message.includes('fraud')) {
         steps[0].status = 'completed';
         steps[1].status = 'compensated';
         steps[2].status = 'failed';
+      } else if (message.includes('Payment')) {
+        steps[0].status = 'completed';
+        steps[1].status = 'compensated';
+        steps[2].status = 'completed';
+        steps[3].status = 'failed';
       }
       return steps;
     }

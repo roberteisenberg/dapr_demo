@@ -8,6 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Dapr client
 builder.Services.AddDaprClient();
 
+// Add HttpClientFactory (used by CheckFraudActivity to call Dapr Conversation API)
+builder.Services.AddHttpClient();
+
 // Register Dapr Workflow
 builder.Services.AddDaprWorkflow(options =>
 {
@@ -18,6 +21,7 @@ builder.Services.AddDaprWorkflow(options =>
     options.RegisterActivity<ValidateOrderActivity>();
     options.RegisterActivity<ReserveInventoryActivity>();
     options.RegisterActivity<ReleaseInventoryActivity>();
+    options.RegisterActivity<CheckFraudActivity>();
     options.RegisterActivity<ProcessPaymentActivity>();
     options.RegisterActivity<NotifyCustomerActivity>();
 });
@@ -103,10 +107,10 @@ app.MapGet("/workflows", () => Results.Ok(new
         new
         {
             name = "OrderFulfillmentWorkflow",
-            description = "4-step saga: Validate -> Reserve Inventory -> Process Payment -> Notify Customer",
+            description = "5-step saga: Validate -> Reserve Inventory -> Check Fraud (AI) -> Process Payment -> Notify Customer",
             endpoint = "POST /workflows/order",
-            activities = new[] { "ValidateOrderActivity", "ReserveInventoryActivity", "ProcessPaymentActivity", "NotifyCustomerActivity" },
-            compensation = new[] { "ReleaseInventoryActivity (triggered on payment failure)" }
+            activities = new[] { "ValidateOrderActivity", "ReserveInventoryActivity", "CheckFraudActivity", "ProcessPaymentActivity", "NotifyCustomerActivity" },
+            compensation = new[] { "ReleaseInventoryActivity (triggered on fraud flag or payment failure)" }
         }
     }
 }));

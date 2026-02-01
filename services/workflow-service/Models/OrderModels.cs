@@ -56,6 +56,16 @@ public record PaymentResult(
 );
 
 /// <summary>
+/// Result of AI fraud check activity (via Dapr Conversation API)
+/// </summary>
+public record FraudCheckResult(
+    string OrderId,
+    bool Approved,
+    string RiskLevel,       // "low", "medium", "high", or "unknown"
+    string? Reasoning = null
+);
+
+/// <summary>
 /// Notification request for customer
 /// </summary>
 public record NotificationRequest(
