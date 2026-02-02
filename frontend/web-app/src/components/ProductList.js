@@ -123,7 +123,7 @@ function ProductList() {
       text += '- **Score**: 0-100\n';
       text += '- **Risk Level**: low (0-39), medium (40-69), high (70-79), critical (80+)\n';
       text += '- **Reasoning**: Brief explanation of risk factors\n';
-      text += '- **Recommendation**: Ship or Cancel\n';
+      text += '- **Action**: Ship or Cancel\n';
 
       await navigator.clipboard.writeText(text);
       setCopyStatus('copied');

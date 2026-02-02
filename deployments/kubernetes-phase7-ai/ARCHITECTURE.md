@@ -178,7 +178,7 @@ GET /orders (list all)
 
 - **Orders panel** — Table below products showing all orders with status badges and fraud scores
 - **Ship/Cancel buttons** — For pending_shipment orders; cancel restores inventory
-- **"Copy for AI" button** — Exports pending orders as a fraud review prompt (not product recommendations)
+- **"Copy for AI" button** — Exports pending orders as a fraud review prompt
 - **6-step saga display** — Validate → Reserve → Check Fraud → Payment → Notify → Record Order
 - **Fraud score display** — Color-coded score (green/yellow/orange/red) with reasoning on hover
 - **Success message** — "Order Pending Shipment" instead of "Order Completed"

@@ -121,8 +121,8 @@ The fraud check returns a score (0-100), not a binary yes/no. The workflow rejec
 | Score | Risk Level | Workflow Action |
 |-------|-----------|----------------|
 | 0-39 | Low | Approved |
-| 40-69 | Medium | Approved (review recommended) |
-| 70-79 | High | Approved (review recommended) |
+| 40-69 | Medium | Approved (flag for review) |
+| 70-79 | High | Approved (flag for review) |
 | 80-100 | Critical | Rejected (inventory released) |
 
 ### Rejected Order (High Fraud Score)
@@ -144,7 +144,7 @@ Use **"Workflow Order"** (orange button) to place orders without automated fraud
 1. **Place workflow orders** — Build up pending orders using "Workflow Order"
 2. **Click "Copy for AI"** — Formats all pending orders as a fraud review prompt, copies to clipboard
 3. **Paste into Claude** — Open [claude.ai](https://claude.ai) or Claude Desktop
-4. **Get fraud assessments** — Claude scores each order 0-100 with reasoning and ship/cancel recommendations
+4. **Get fraud assessments** — Claude scores each order 0-100 with reasoning
 5. **Ship or Cancel** — Return to the app and act on Claude's advice
 
 ![Orders panel showing manual workflow orders pending review](docs/images/manual-fraud-review-orders.png)
