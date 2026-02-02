@@ -4,22 +4,23 @@
 
 This phase introduces AI into the Dapr microservices demo in two ways:
 
-1. **Phase 7 (Manual):** "Copy for AI" button exports catalog/order data for Claude Desktop
-2. **Phase 7-A (Fraud Check):** An AI-powered fraud detection step in the order fulfillment workflow, using the Dapr Conversation API to call Claude
+1. **Phase 7 (Manual):** "Copy for AI" button exports pending orders for fraud review in Claude Desktop
+2. **Phase 7-A (Fraud Check):** AI-powered fraud scoring in the order fulfillment workflow, using the Dapr Conversation API to call Claude
 
-The key teaching point: an LLM call fits into a deterministic Dapr Workflow as a regular activity. The workflow stays deterministic (fixed step order), but one step uses AI for analysis.
+The key teaching point: an LLM call fits into a deterministic Dapr Workflow as a regular activity. The workflow stays deterministic (fixed step order), but one step uses AI for risk assessment. The LLM returns a score (0-100), and the workflow applies a threshold — this is more honest about what LLMs can do than a binary yes/no.
 
 ## Updated Order Fulfillment Workflow (Phase 7-A)
 
 ```
-Before (Phase 5 — 4 steps):           After (Phase 7-A — 5 steps):
+Before (Phase 5 — 4 steps):           After (Phase 7-A — 6 steps):
 
 1. Validate Order                      1. Validate Order
 2. Reserve Inventory                   2. Reserve Inventory
-3. Process Payment                     3. Check Fraud (NEW — calls Claude)
-4. Notify Customer                        ↳ if flagged: compensate, reject
+3. Process Payment                     3. Check Fraud (NEW — scores 0-100 via Claude)
+4. Notify Customer                        ↳ if score >= 80: compensate, reject
                                        4. Process Payment
                                        5. Notify Customer
+                                       6. Record Order (NEW — saves to state store)
 ```
 
 The fraud check uses the Dapr Conversation API (`conversation.anthropic` component) to ask Claude to assess order risk. The workflow-service container never sees the API key — it goes through the Dapr sidecar.
@@ -34,8 +35,9 @@ OrderFulfillmentWorkflow (C#/.NET Dapr Workflow)
   │
   ├─ Step 3: CheckFraudActivity (NEW)
   │    │
-  │    │  Build prompt with order details
-  │    │  (customer, product, quantity, total)
+  │    │  Fetch order history from order-service (via sidecar)
+  │    │  Build prompt with order details + history
+  │    │  (customer, product, category, quantity, total, address, timestamps)
   │    │
   │    │  POST http://localhost:3500/v1.0-alpha1/conversation/anthropic-llm/converse
   │    │  { "inputs": [{ "content": prompt }] }
@@ -44,18 +46,38 @@ OrderFulfillmentWorkflow (C#/.NET Dapr Workflow)
   │    │  Dapr sidecar → conversation.anthropic → Claude API
   │    │        │
   │    │        ▼
-  │    │  Parse response: { approved, riskLevel, reasoning }
+  │    │  Parse response: { score: 0-100, reasoning: "..." }
   │    │
-  │    ├─ approved=true  → continue to payment
-  │    └─ approved=false → ReleaseInventoryActivity (compensation) → reject order
+  │    ├─ score < 80  → continue to payment
+  │    └─ score >= 80 → ReleaseInventoryActivity (compensation) → reject order
   │
   ├─ Step 4: ProcessPaymentActivity
-  └─ Step 5: NotifyCustomerActivity
+  ├─ Step 5: NotifyCustomerActivity
+  └─ Step 6: RecordOrderActivity (NEW)
+       │
+       │  Calls order-service POST /orders/record
+       │  Saves order with status "pending_shipment" + fraud score
+       │  (fire-and-forget — don't fail workflow if recording fails)
 ```
+
+### Activities vs Service Calls
+
+The workflow orchestrates **activities** (in-process C# classes), not service calls directly. Each activity then makes outbound calls via the Dapr sidecar as needed:
+
+| Activity | External Call | Via |
+|----------|--------------|-----|
+| ValidateOrderActivity | None | Pure in-process logic |
+| ReserveInventoryActivity | catalog-service | `DaprClient.InvokeMethodAsync()` |
+| CheckFraudActivity | Claude API + order-service | `HttpClient` → Dapr Conversation API (sidecar) + order history via sidecar |
+| ProcessPaymentActivity | None | Simulated payment (in-process) |
+| NotifyCustomerActivity | notification-service | `DaprClient.PublishEventAsync()` (pub/sub) |
+| RecordOrderActivity | order-service | `DaprClient.InvokeMethodAsync()` |
+
+This separation is required because the workflow engine replays/checkpoints execution for durability. Side effects (HTTP calls, LLM calls, pub/sub) must be isolated inside activities — the workflow itself stays deterministic.
 
 ### Graceful Degradation
 
-If the Conversation API is unavailable (no API key, service error, timeout), the fraud check **approves by default** with `riskLevel: "unknown"`. This means:
+If the Conversation API is unavailable (no API key, service error, timeout), the fraud check **returns score 0** with `riskLevel: "unknown"`. This means:
 
 - The workflow never blocks on AI failures
 - Orders still flow through without the API key configured
@@ -94,10 +116,11 @@ If the Conversation API is unavailable (no API key, service error, timeout), the
 
 | File | Change |
 |------|--------|
-| `Activities/CheckFraudActivity.cs` | New — calls Dapr Conversation API via HTTP |
-| `Models/OrderModels.cs` | Added `FraudCheckResult` record |
-| `Workflows/OrderFulfillmentWorkflow.cs` | Inserted fraud check between reserve and payment |
-| `Program.cs` | Registered `CheckFraudActivity`, added `IHttpClientFactory` |
+| `Activities/CheckFraudActivity.cs` | New — fetches order history, calls Dapr Conversation API, returns score 0-100 |
+| `Activities/RecordOrderActivity.cs` | New — saves order to order-service state store |
+| `Models/OrderModels.cs` | Added `FraudCheckResult` (score-based), `RecordOrderRequest` |
+| `Workflows/OrderFulfillmentWorkflow.cs` | 6-step saga: fraud check (step 3) + record order (step 6) |
+| `Program.cs` | Registered new activities, added `IHttpClientFactory` |
 
 ### Dapr Conversation API
 
@@ -113,7 +136,7 @@ POST http://localhost:{DAPR_HTTP_PORT}/v1.0-alpha1/conversation/anthropic-llm/co
 Response:
 ```json
 {
-  "outputs": [{ "result": "{\"approved\": true, \"riskLevel\": \"low\", \"reasoning\": \"...\"}" }]
+  "outputs": [{ "result": "{\"score\": 15, \"reasoning\": \"...\"}" }]
 }
 ```
 
@@ -129,15 +152,21 @@ One new component (in `03-components/`):
 
 Scoped to `workflow-service`.
 
-### Order List Endpoint
+### Order-Service Changes
 
-The order-service gains a `GET /orders` endpoint that returns all orders. This is backed by an order index maintained in the Dapr state store:
+New endpoints for the order lifecycle:
 
 ```
-POST /orders (create order)
-  └─ Save order to state store (key: orderId)
-  └─ Append orderId to order index (key: order-index)
-  └─ Publish event to pub/sub
+POST /orders/record (called by RecordOrderActivity)
+  └─ Save order to state store with status, fraud score, transaction ID
+  └─ Append orderId to order index
+
+POST /orders/{id}/ship
+  └─ Set status to "shipped", add shippedAt timestamp
+
+POST /orders/{id}/cancel
+  └─ Set status to "cancelled", add cancelledAt timestamp
+  └─ Restore inventory via catalog-service (GET product, PUT with restored stock)
 
 GET /orders (list all)
   └─ Read order index from state store
@@ -147,9 +176,12 @@ GET /orders (list all)
 
 ### Frontend Changes
 
-- **"Copy for AI" button** — Exports catalog + order data as a structured prompt
-- **5-step saga display** — Updated from 4 steps to show "Check Fraud" between Reserve and Payment
-- **Fraud failure handling** — UI shows fraud reasoning when an order is flagged
+- **Orders panel** — Table below products showing all orders with status badges and fraud scores
+- **Ship/Cancel buttons** — For pending_shipment orders; cancel restores inventory
+- **"Copy for AI" button** — Exports pending orders as a fraud review prompt (not product recommendations)
+- **6-step saga display** — Validate → Reserve → Check Fraud → Payment → Notify → Record Order
+- **Fraud score display** — Color-coded score (green/yellow/orange/red) with reasoning on hover
+- **Success message** — "Order Pending Shipment" instead of "Order Completed"
 
 ## API Key Management
 

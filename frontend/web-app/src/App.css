@@ -252,7 +252,8 @@ footer {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 0.75rem;
   border: 2px solid #ddd;
@@ -263,7 +264,8 @@ footer {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   outline: none;
   border-color: #667eea;
 }
@@ -371,6 +373,14 @@ footer {
 }
 
 .workflow-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.workflow-ai-button {
+  background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%) !important;
+}
+
+.workflow-ai-button:hover:not(:disabled) {
   opacity: 0.9;
 }
 
@@ -550,6 +560,204 @@ footer {
 
 .workflow-submit {
   background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+}
+
+/* ===== Orders Panel ===== */
+
+.orders-panel {
+  margin-top: 2rem;
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.orders-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.orders-header h2 {
+  color: #333;
+  margin: 0;
+}
+
+.orders-refresh-btn {
+  padding: 0.5rem 1rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.orders-refresh-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.orders-error {
+  background-color: #ffebee;
+  color: #d32f2f;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.orders-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.orders-table-wrap {
+  overflow-x: auto;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.orders-table th {
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 2px solid #e0e0e0;
+  color: #666;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.orders-table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.order-row:hover {
+  background: #fafafa;
+}
+
+.order-id {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  color: #666;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.badge-shipped {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.badge-default {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.fraud-score {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  cursor: help;
+}
+
+.fraud-low {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.fraud-medium {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.fraud-high {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.fraud-critical {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.fraud-na {
+  color: #ccc;
+  cursor: default;
+}
+
+.order-category {
+  color: #999;
+  font-size: 0.75rem;
+}
+
+.order-address-hint {
+  color: #667eea;
+  cursor: help;
+}
+
+.order-actions {
+  display: flex;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.btn-ship {
+  padding: 0.3rem 0.625rem;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-ship:hover:not(:disabled) {
+  background: #43a047;
+}
+
+.btn-cancel-order {
+  padding: 0.3rem 0.625rem;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancel-order:hover:not(:disabled) {
+  background: #e53935;
+}
+
+.btn-ship:disabled,
+.btn-cancel-order:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ===== Status Panel ===== */

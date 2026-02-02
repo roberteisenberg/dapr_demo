@@ -2,8 +2,8 @@
 
 Deploy the Dapr microservices demo with AI capabilities. This phase introduces AI in two steps:
 
-- **Phase 7 (Manual):** "Copy for AI" button exports data for Claude Desktop
-- **Phase 7-A (Fraud Check):** AI-powered fraud detection in the order fulfillment workflow via Dapr Conversation API
+- **Phase 7 (Manual):** "Copy for AI" button exports pending orders for fraud review in Claude Desktop
+- **Phase 7-A (Fraud Check):** AI-powered fraud scoring in the order fulfillment workflow via Dapr Conversation API
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the updated workflow diagram.
 
@@ -11,18 +11,22 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the updated workflow diagram.
 
 | Feature | Phase | Description |
 |---------|-------|-------------|
-| "Copy for AI" button | 7 | Exports catalog and order data as a prompt for Claude |
+| "Copy for AI" button | 7 | Exports pending orders for fraud review in Claude |
 | Order list endpoint | 7 | `GET /orders` returns all orders (new in order-service) |
-| Fraud check activity | 7-A | `CheckFraudActivity` calls Claude to assess order risk before payment |
+| Ship/Cancel orders | 7 | `POST /orders/{id}/ship` and `/cancel` with inventory restoration |
+| Orders panel | 7 | UI to view, ship, and cancel pending orders |
+| Fraud scoring activity | 7-A | `CheckFraudActivity` returns fraud score 0-100 via Claude |
 | Dapr Conversation API | 7-A | Provider-agnostic LLM calls (`conversation.anthropic` component) |
-| Updated saga display | 7-A | Frontend shows 5-step saga: Validate → Reserve → Check Fraud → Payment → Notify |
+| Record order activity | 7-A | `RecordOrderActivity` saves workflow orders to state store |
+| Updated saga display | 7-A | Frontend shows 6-step saga with fraud score display |
 
 ## What You'll Learn
 
 - Adding an AI step to an existing deterministic workflow (saga pattern)
 - Dapr Conversation API — provider-agnostic LLM abstraction (Claude, OpenAI, etc.)
 - API key management via Kubernetes secrets + Dapr `secretKeyRef` (app never sees the key)
-- Workflow compensation when AI flags an order (inventory release)
+- Score-based AI assessment (0-100) rather than binary decisions — humans set the threshold
+- Workflow compensation when fraud score exceeds threshold (inventory release)
 - Feature detection pattern (frontend adapts to available services)
 
 ## Prerequisites
@@ -100,26 +104,50 @@ kubectl port-forward -n dapr-demo svc/api-gateway-ingress-nginx-controller 8080:
 
 Open http://localhost:8080
 
-## Fraud Check in Action
+## Three Order Modes
 
-1. **Add products** — Create several products in the catalog
-2. **Place a workflow order** — Click "Order (Workflow)" on any product
-3. **Watch the saga** — The 5-step progress display shows:
-   - Validate Order → Reserve Inventory → **Check Fraud** → Process Payment → Send Notification
-4. **Check logs** — See Claude's fraud assessment:
+Each product card has three buttons:
+
+- **Quick Order** — Direct order, no workflow (same as Phase 3)
+- **Workflow Order** (orange) — Saga pattern without AI fraud check. Orders land as "pending_shipment" for manual review via "Copy for AI"
+- **Workflow + AI** (purple) — Saga pattern with AI fraud check. Claude scores the order before payment; high-risk orders are rejected automatically
+
+![Product cards with three order buttons, Orders panel with fraud scores](docs/images/orders-panel-fraud-scores.png)
+
+## Phase 7-A: Automated Fraud Check (Workflow + AI)
+
+The fraud check returns a score (0-100), not a binary yes/no. The workflow rejects orders scoring >= 80. Lower scores are approved but visible in the UI so humans can make the final call. Claude analyzes the full order context — product category, shipping address, order history, and purchasing velocity — to assess risk.
+
+| Score | Risk Level | Workflow Action |
+|-------|-----------|----------------|
+| 0-39 | Low | Approved |
+| 40-69 | Medium | Approved (review recommended) |
+| 70-79 | High | Approved (review recommended) |
+| 80-100 | Critical | Rejected (inventory released) |
+
+### Rejected Order (High Fraud Score)
+
+When Claude scores an order >= 80 (critical risk), the workflow stops at step 3, releases the reserved inventory, and shows the AI's reasoning:
+
+![Rejected order — fraud score 85/100, gift card fraud detected](docs/images/fraud-order-rejected.png)
+
+Check logs to see Claude's fraud assessment:
 
 ```bash
 kubectl logs -f deployment/workflow-service -c workflow-service -n dapr-demo
 ```
 
-If Claude flags an order as high risk, the workflow compensates (releases inventory) and reports the fraud reasoning in the UI.
+## Phase 7: Manual Fraud Review (Copy for AI)
 
-## "Copy for AI" (Phase 7 — Manual)
+Use **"Workflow Order"** (orange button) to place orders without automated fraud check. These land as "pending_shipment" and can be reviewed manually:
 
-1. **Add products** and **place orders** to build up history
-2. **Click "Copy for AI"** — Formats data as a prompt, copies to clipboard
+1. **Place workflow orders** — Build up pending orders using "Workflow Order"
+2. **Click "Copy for AI"** — Formats all pending orders as a fraud review prompt, copies to clipboard
 3. **Paste into Claude** — Open [claude.ai](https://claude.ai) or Claude Desktop
-4. **Get recommendations** — Claude suggests new products to stock
+4. **Get fraud assessments** — Claude scores each order 0-100 with reasoning and ship/cancel recommendations
+5. **Ship or Cancel** — Return to the app and act on Claude's advice
+
+![Orders panel showing manual workflow orders pending review](docs/images/manual-fraud-review-orders.png)
 
 ## Testing
 
@@ -169,10 +197,10 @@ deployments/kubernetes-phase7-ai/
 │   │   ├── conversation.yaml        # Anthropic LLM via Dapr Conversation API
 │   │   └── templates/
 │   ├── 04-catalog-service.yaml
-│   ├── 05-order-service.yaml         # Updated: GET /orders endpoint
+│   ├── 05-order-service.yaml         # Updated: record/ship/cancel endpoints
 │   ├── 06-notification-service.yaml
-│   ├── 07-workflow-service.yaml      # Updated: CheckFraudActivity (calls Conversation API)
-│   ├── 08-web-app.yaml               # Updated: "Copy for AI" + 5-step saga display
+│   ├── 07-workflow-service.yaml      # Updated: fraud scoring + RecordOrderActivity
+│   ├── 08-web-app.yaml               # Updated: OrdersPanel + fraud review export
 │   ├── 09-ingress.yaml
 │   └── 10-zipkin.yaml
 ├── scripts/

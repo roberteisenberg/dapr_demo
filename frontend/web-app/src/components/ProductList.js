@@ -3,6 +3,7 @@ import { getProducts, getOrders, getWorkflowInfo } from '../services/api';
 import OrderForm from './OrderForm';
 import ProductForm from './ProductForm';
 import WorkflowOrderForm from './WorkflowOrderForm';
+import OrdersPanel from './OrdersPanel';
 
 function ProductList() {
   const [products, setProducts] = useState([]);
@@ -11,8 +12,10 @@ function ProductList() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [useWorkflow, setUseWorkflow] = useState(false);
+  const [skipFraudCheck, setSkipFraudCheck] = useState(false);
   const [workflowAvailable, setWorkflowAvailable] = useState(false);
   const [copyStatus, setCopyStatus] = useState(null);
+
   useEffect(() => {
     fetchProducts();
     checkWorkflowAvailable();
@@ -43,14 +46,16 @@ function ProductList() {
     }
   };
 
-  const handleOrderClick = (product, workflow = false) => {
+  const handleOrderClick = (product, workflow = false, noFraud = false) => {
     setSelectedProduct(product);
     setUseWorkflow(workflow);
+    setSkipFraudCheck(noFraud);
   };
 
   const handleOrderComplete = () => {
     setSelectedProduct(null);
     setUseWorkflow(false);
+    setSkipFraudCheck(false);
     // Refresh products to update stock
     fetchProducts();
   };
@@ -58,43 +63,67 @@ function ProductList() {
   const handleOrderCancel = () => {
     setSelectedProduct(null);
     setUseWorkflow(false);
+    setSkipFraudCheck(false);
   };
 
   const handleCopyForAI = async () => {
     try {
       setCopyStatus('loading');
-      const currentProducts = products.length > 0 ? products : await getProducts();
 
       let orders = [];
       try {
         orders = await getOrders() || [];
       } catch (err) {
-        // Orders may be empty, that's fine
+        // Orders endpoint may not exist in older phases
       }
 
-      let text = 'Here is my current product catalog and recent orders. Based on this data,\n';
-      text += 'what additional products should I consider stocking?\n\n';
-      text += '## Current Products\n';
-      if (currentProducts.length === 0) {
-        text += '(No products in catalog yet)\n';
-      } else {
-        currentProducts.forEach(p => {
-          const stockNote = p.stock === 0 ? ' - out of stock' : '';
-          text += `- ${p.name} ($${p.price.toFixed(2)}, ${p.stock} in stock${stockNote})\n`;
+      const pendingOrders = orders.filter(o => o.status === 'pending_shipment');
+
+      if (pendingOrders.length === 0) {
+        await navigator.clipboard.writeText('No pending orders to review.');
+        setCopyStatus('copied');
+        setTimeout(() => setCopyStatus(null), 2000);
+        return;
+      }
+
+      let text = 'You are reviewing e-commerce orders before shipment. For each order below,\n';
+      text += 'assess the fraud risk and return a score from 0 (no risk) to 100 (certain fraud)\n';
+      text += 'with brief reasoning.\n\n';
+      text += '## Pending Orders\n\n';
+
+      pendingOrders.forEach((o, i) => {
+        text += `### Order ${i + 1}: ${o.orderId}\n`;
+        text += `- Customer: ${o.customerName || 'Unknown'}\n`;
+        text += `- Email: ${o.customerEmail || 'Unknown'}\n`;
+        text += `- Product: ${o.productName || o.productId}\n`;
+        if (o.productCategory) text += `- Category: ${o.productCategory}\n`;
+        text += `- Quantity: ${o.quantity}\n`;
+        text += `- Total: $${(o.total || 0).toFixed(2)}\n`;
+        if (o.shippingAddress) text += `- Shipping Address: ${o.shippingAddress}\n`;
+        if (o.orderTimestamp) text += `- Order Time: ${o.orderTimestamp}\n`;
+        if (o.paymentTransactionId) text += `- Transaction: ${o.paymentTransactionId}\n`;
+        text += '\n';
+      });
+
+      // Include all orders as history context
+      const allOtherOrders = orders.filter(o => o.status !== 'pending_shipment');
+      if (allOtherOrders.length > 0) {
+        text += '## Order History (for context)\n\n';
+        allOtherOrders.forEach(o => {
+          text += `- ${o.customerName || '?'} (${o.customerEmail || '?'}): ${o.productName || o.productId}`;
+          if (o.productCategory) text += ` [${o.productCategory}]`;
+          text += ` x${o.quantity}, $${(o.total || 0).toFixed(2)}, status=${o.status}`;
+          if (o.orderTimestamp) text += `, time=${o.orderTimestamp}`;
+          text += '\n';
         });
+        text += '\n';
       }
 
-      text += '\n## Recent Orders\n';
-      if (orders.length === 0) {
-        text += '(No orders yet)\n';
-      } else {
-        orders.forEach(o => {
-          text += `- Order ${o.orderId}: ${o.productName || o.productId} x${o.quantity} ($${(o.total || 0).toFixed(2)})\n`;
-        });
-      }
-
-      text += '\nPlease suggest 3-5 new products with name, description, suggested price,\n';
-      text += 'and reasoning based on the patterns you see.\n';
+      text += 'For each order, respond with:\n';
+      text += '- **Score**: 0-100\n';
+      text += '- **Risk Level**: low (0-39), medium (40-69), high (70-79), critical (80+)\n';
+      text += '- **Reasoning**: Brief explanation of risk factors\n';
+      text += '- **Recommendation**: Ship or Cancel\n';
 
       await navigator.clipboard.writeText(text);
       setCopyStatus('copied');
@@ -142,7 +171,7 @@ function ProductList() {
             className="copy-ai-button"
             onClick={handleCopyForAI}
             disabled={copyStatus === 'loading'}
-            title="Copy catalog and order data to paste into Claude Desktop"
+            title="Copy pending orders for fraud review in Claude Desktop"
           >
             {copyStatus === 'loading' ? 'Loading...' : copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Failed' : 'Copy for AI'}
           </button>
@@ -176,14 +205,24 @@ function ProductList() {
                 {product.stock > 0 ? (workflowAvailable ? 'Quick Order' : 'Order Now') : 'Out of Stock'}
               </button>
               {workflowAvailable && (
-                <button
-                  className="order-button workflow-button"
-                  onClick={() => handleOrderClick(product, true)}
-                  disabled={product.stock === 0}
-                  title="Order with Saga Pattern"
-                >
-                  {product.stock > 0 ? 'Workflow Order' : 'Out of Stock'}
-                </button>
+                <>
+                  <button
+                    className="order-button workflow-button"
+                    onClick={() => handleOrderClick(product, true, true)}
+                    disabled={product.stock === 0}
+                    title="Order with Saga Pattern (no AI fraud check)"
+                  >
+                    {product.stock > 0 ? 'Workflow Order' : 'Out of Stock'}
+                  </button>
+                  <button
+                    className="order-button workflow-ai-button"
+                    onClick={() => handleOrderClick(product, true, false)}
+                    disabled={product.stock === 0}
+                    title="Order with Saga Pattern + AI Fraud Check"
+                  >
+                    {product.stock > 0 ? 'Workflow + AI' : 'Out of Stock'}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -204,6 +243,7 @@ function ProductList() {
           product={selectedProduct}
           onComplete={handleOrderComplete}
           onCancel={handleOrderCancel}
+          skipFraudCheck={skipFraudCheck}
         />
       )}
 
@@ -213,6 +253,8 @@ function ProductList() {
           onCancel={handleProductFormCancel}
         />
       )}
+
+      <OrdersPanel onRefreshProducts={fetchProducts} />
     </div>
   );
 }

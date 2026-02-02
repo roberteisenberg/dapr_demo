@@ -73,7 +73,8 @@ public class ReserveInventoryActivity : WorkflowActivity<OrderRequest, Inventory
                 Success: true,
                 Message: "Inventory reserved successfully",
                 UnitPrice: product.Price,
-                ProductName: product.Name);
+                ProductName: product.Name,
+                ProductCategory: product.Category);
         }
         catch (Exception ex)
         {

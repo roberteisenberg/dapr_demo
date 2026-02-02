@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { startWorkflow, getWorkflowStatus } from '../services/api';
 
-function WorkflowOrderForm({ product, onComplete, onCancel }) {
+function WorkflowOrderForm({ product, onComplete, onCancel, skipFraudCheck = false }) {
   const [quantity, setQuantity] = useState(1);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [workflowState, setWorkflowState] = useState(null);
@@ -58,6 +59,8 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
         quantity: parseInt(quantity, 10),
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
+        shippingAddress: shippingAddress.trim() || undefined,
+        skipFraudCheck,
       };
 
       const result = await startWorkflow(orderData);
@@ -82,9 +85,10 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
     const steps = [
       { name: 'Validate Order', status: 'pending' },
       { name: 'Reserve Inventory', status: 'pending' },
-      { name: 'Check Fraud', status: 'pending' },
+      { name: skipFraudCheck ? 'Check Fraud (skipped)' : 'Check Fraud', status: 'pending' },
       { name: 'Process Payment', status: 'pending' },
       { name: 'Send Notification', status: 'pending' },
+      { name: 'Record Order', status: 'pending' },
     ];
 
     if (!workflowState) return steps;
@@ -146,7 +150,7 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && !isRunning && onCancel()}>
       <div className="modal workflow-modal">
         <h2>Order with Workflow</h2>
-        <p className="workflow-subtitle">Saga Pattern with Compensation</p>
+        <p className="workflow-subtitle">{skipFraudCheck ? 'Saga Pattern — Manual Review' : 'Saga Pattern with AI Fraud Check'}</p>
 
         {instanceId ? (
           <div className="workflow-status">
@@ -168,8 +172,8 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
 
             {isComplete && workflowState.output?.status === 'Completed' && (
               <div className="workflow-success">
-                <h3>Order Completed!</h3>
-                <p>{workflowState.output?.message}</p>
+                <h3>Order Pending Shipment</h3>
+                <p>Payment processed. Order is awaiting shipment review.</p>
                 {workflowState.output?.totalAmount && (
                   <p className="total-charged">Total: ${workflowState.output.totalAmount.toFixed(2)}</p>
                 )}
@@ -220,6 +224,18 @@ function WorkflowOrderForm({ product, onComplete, onCancel }) {
                 onChange={(e) => setCustomerEmail(e.target.value)}
                 placeholder="john@example.com"
                 required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="shippingAddress">Shipping Address:</label>
+              <input
+                type="text"
+                id="shippingAddress"
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                placeholder="123 Main St, Anytown, ST 12345"
                 disabled={loading}
               />
             </div>

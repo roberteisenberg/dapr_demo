@@ -24,6 +24,7 @@ builder.Services.AddDaprWorkflow(options =>
     options.RegisterActivity<CheckFraudActivity>();
     options.RegisterActivity<ProcessPaymentActivity>();
     options.RegisterActivity<NotifyCustomerActivity>();
+    options.RegisterActivity<RecordOrderActivity>();
 });
 
 var app = builder.Build();
@@ -107,10 +108,10 @@ app.MapGet("/workflows", () => Results.Ok(new
         new
         {
             name = "OrderFulfillmentWorkflow",
-            description = "5-step saga: Validate -> Reserve Inventory -> Check Fraud (AI) -> Process Payment -> Notify Customer",
+            description = "6-step saga: Validate -> Reserve Inventory -> Check Fraud (AI) -> Process Payment -> Notify Customer -> Record Order",
             endpoint = "POST /workflows/order",
-            activities = new[] { "ValidateOrderActivity", "ReserveInventoryActivity", "CheckFraudActivity", "ProcessPaymentActivity", "NotifyCustomerActivity" },
-            compensation = new[] { "ReleaseInventoryActivity (triggered on fraud flag or payment failure)" }
+            activities = new[] { "ValidateOrderActivity", "ReserveInventoryActivity", "CheckFraudActivity", "ProcessPaymentActivity", "NotifyCustomerActivity", "RecordOrderActivity" },
+            compensation = new[] { "ReleaseInventoryActivity (triggered on fraud rejection or payment failure)" }
         }
     }
 }));

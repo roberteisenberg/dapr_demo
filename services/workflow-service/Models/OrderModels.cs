@@ -8,7 +8,9 @@ public record OrderRequest(
     string ProductId,
     int Quantity,
     string CustomerName,
-    string CustomerEmail
+    string CustomerEmail,
+    string? ShippingAddress = null,
+    bool SkipFraudCheck = false
 );
 
 /// <summary>
@@ -29,7 +31,8 @@ public record Product(
     string Name,
     string? Description,
     decimal Price,
-    int Stock
+    int Stock,
+    string? Category = null
 );
 
 /// <summary>
@@ -42,7 +45,8 @@ public record InventoryReservation(
     bool Success,
     string? Message = null,
     decimal? UnitPrice = null,
-    string? ProductName = null
+    string? ProductName = null,
+    string? ProductCategory = null
 );
 
 /// <summary>
@@ -56,13 +60,36 @@ public record PaymentResult(
 );
 
 /// <summary>
-/// Result of AI fraud check activity (via Dapr Conversation API)
+/// Result of AI fraud check activity (via Dapr Conversation API).
+/// Returns a score (0-100) rather than binary approved/rejected — the workflow
+/// decides the threshold (>= 80 = reject). This lets humans calibrate trust.
 /// </summary>
 public record FraudCheckResult(
     string OrderId,
-    bool Approved,
-    string RiskLevel,       // "low", "medium", "high", or "unknown"
+    int Score,              // 0-100 fraud risk score
+    string RiskLevel,       // "low" (0-39), "medium" (40-69), "high" (70-79), "critical" (80+), or "unknown"
     string? Reasoning = null
+);
+
+/// <summary>
+/// Request to record a completed order in the order-service state store
+/// </summary>
+public record RecordOrderRequest(
+    string OrderId,
+    string ProductId,
+    string? ProductName,
+    string? ProductCategory,
+    int Quantity,
+    decimal? Price,
+    decimal? Total,
+    string Status,
+    string CustomerName,
+    string CustomerEmail,
+    string? ShippingAddress = null,
+    string? OrderTimestamp = null,
+    string? PaymentTransactionId = null,
+    int? FraudScore = null,
+    string? FraudReasoning = null
 );
 
 /// <summary>

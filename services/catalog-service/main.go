@@ -23,6 +23,7 @@ type Product struct {
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
 	Stock       int     `json:"stock"`
+	Category    string  `json:"category,omitempty"`
 }
 
 var daprClient dapr.Client

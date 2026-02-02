@@ -8,6 +8,7 @@ function ProductForm({ onComplete, onCancel }) {
     description: '',
     price: '',
     stock: '',
+    category: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -50,6 +51,7 @@ function ProductForm({ onComplete, onCancel }) {
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
+        category: formData.category || undefined,
       };
 
       const result = await createProduct(productData);
@@ -120,6 +122,26 @@ function ProductForm({ onComplete, onCancel }) {
                 rows="3"
                 disabled={loading}
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="category">Category:</label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="">-- Select category --</option>
+                <option value="electronics">Electronics</option>
+                <option value="gift-cards">Gift Cards</option>
+                <option value="clothing">Clothing</option>
+                <option value="office-supplies">Office Supplies</option>
+                <option value="home-garden">Home & Garden</option>
+                <option value="sports">Sports & Outdoors</option>
+                <option value="other">Other</option>
+              </select>
             </div>
 
             <div className="form-group">

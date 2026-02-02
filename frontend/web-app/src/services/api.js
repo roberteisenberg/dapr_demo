@@ -109,6 +109,17 @@ export const getOrders = async () => {
   return response.data;
 };
 
+// Order actions - ship/cancel pending orders
+export const shipOrder = async (orderId) => {
+  const response = await daprInvoke('order-service', `/orders/${orderId}/ship`, {}, 'POST');
+  return response.data;
+};
+
+export const cancelOrder = async (orderId) => {
+  const response = await daprInvoke('order-service', `/orders/${orderId}/cancel`, {}, 'POST');
+  return response.data;
+};
+
 // Workflow API - calls workflow-service via Dapr (Phase 5+)
 // Uses saga pattern with automatic compensation on failure
 export const startWorkflow = async (orderData) => {

@@ -218,6 +218,23 @@ The `OrderFulfillmentWorkflow` orchestrates a 4-step saga:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Activities vs Service Calls
+
+The workflow orchestrates **activities**, not service calls. Activities are C# classes that run in-process inside the workflow-service pod. Each activity then makes its own outbound calls (via the Dapr sidecar) as an implementation detail:
+
+```
+Workflow                          Activities (in-process)              External Services
+────────                          ──────────────────────              ─────────────────
+CallActivityAsync<bool>       →   ValidateOrderActivity           →   (none — pure logic)
+CallActivityAsync<Reservation>→   ReserveInventoryActivity        →   catalog-service (via DaprClient)
+CallActivityAsync<Payment>    →   ProcessPaymentActivity          →   (none — simulated)
+CallActivityAsync<bool>       →   NotifyCustomerActivity          →   notification-service (via pub/sub)
+```
+
+The workflow engine needs this separation because it replays/checkpoints execution for durability. Side effects (HTTP calls, pub/sub) must be isolated inside activities — the workflow itself must remain deterministic.
+
+Activities call external services using `DaprClient.InvokeMethodAsync()` for service invocation or `DaprClient.PublishEventAsync()` for pub/sub. The Dapr sidecar handles discovery, mTLS, retries, and tracing — the activity just specifies the `app-id` and method name.
+
 ### Compensation Flow
 
 When payment fails, the workflow automatically compensates:

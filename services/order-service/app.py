@@ -122,6 +122,133 @@ def list_orders():
         logger.error(f"Error listing orders: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/orders/record', methods=['POST'])
+def record_order():
+    """Record a workflow order into the state store (called by RecordOrderActivity)"""
+    try:
+        order_data = request.json
+        order_id = order_data.get('orderId')
+
+        if not order_id:
+            return jsonify({"error": "orderId is required"}), 400
+
+        logger.info(f"Recording workflow order: {order_id}")
+
+        with DaprClient() as d:
+            order = {
+                "orderId": order_id,
+                "productId": order_data.get('productId'),
+                "productName": order_data.get('productName'),
+                "productCategory": order_data.get('productCategory'),
+                "quantity": order_data.get('quantity'),
+                "price": order_data.get('price'),
+                "total": order_data.get('total'),
+                "status": order_data.get('status', 'pending_shipment'),
+                "customerName": order_data.get('customerName'),
+                "customerEmail": order_data.get('customerEmail'),
+                "shippingAddress": order_data.get('shippingAddress'),
+                "orderTimestamp": order_data.get('orderTimestamp'),
+                "paymentTransactionId": order_data.get('paymentTransactionId'),
+                "fraudScore": order_data.get('fraudScore'),
+                "fraudReasoning": order_data.get('fraudReasoning'),
+            }
+
+            d.save_state(
+                store_name=DAPR_STORE_NAME,
+                key=order_id,
+                value=json.dumps(order)
+            )
+
+            # Update order index
+            try:
+                index_result = d.get_state(store_name=DAPR_STORE_NAME, key=ORDER_INDEX_KEY)
+                order_ids = json.loads(index_result.data) if index_result.data else []
+            except Exception:
+                order_ids = []
+            if order_id not in order_ids:
+                order_ids.append(order_id)
+                d.save_state(store_name=DAPR_STORE_NAME, key=ORDER_INDEX_KEY, value=json.dumps(order_ids))
+
+            logger.info(f"Workflow order recorded: {order_id}")
+            return jsonify(order), 201
+
+    except Exception as e:
+        logger.error(f"Error recording order: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/orders/<order_id>/ship', methods=['POST'])
+def ship_order(order_id):
+    """Ship a pending order"""
+    try:
+        with DaprClient() as d:
+            result = d.get_state(store_name=DAPR_STORE_NAME, key=order_id)
+            if not result.data:
+                return jsonify({"error": "Order not found"}), 404
+
+            order = json.loads(result.data)
+            if order.get('status') != 'pending_shipment':
+                return jsonify({"error": f"Cannot ship order with status '{order.get('status')}'. Must be 'pending_shipment'."}), 400
+
+            order['status'] = 'shipped'
+            from datetime import datetime, timezone
+            order['shippedAt'] = datetime.now(timezone.utc).isoformat()
+
+            d.save_state(store_name=DAPR_STORE_NAME, key=order_id, value=json.dumps(order))
+            logger.info(f"Order shipped: {order_id}")
+            return jsonify(order), 200
+
+    except Exception as e:
+        logger.error(f"Error shipping order: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/orders/<order_id>/cancel', methods=['POST'])
+def cancel_order(order_id):
+    """Cancel a pending order and restore inventory"""
+    try:
+        with DaprClient() as d:
+            result = d.get_state(store_name=DAPR_STORE_NAME, key=order_id)
+            if not result.data:
+                return jsonify({"error": "Order not found"}), 404
+
+            order = json.loads(result.data)
+            if order.get('status') != 'pending_shipment':
+                return jsonify({"error": f"Cannot cancel order with status '{order.get('status')}'. Must be 'pending_shipment'."}), 400
+
+            # Restore inventory
+            product_id = order.get('productId')
+            quantity = order.get('quantity', 0)
+            if product_id and quantity > 0:
+                try:
+                    product_result = d.invoke_method(
+                        app_id='catalog-service',
+                        method_name=f'products/{product_id}',
+                        http_verb='GET'
+                    )
+                    product = json.loads(product_result.data)
+                    product['stock'] = product.get('stock', 0) + quantity
+
+                    d.invoke_method(
+                        app_id='catalog-service',
+                        method_name=f'products/{product_id}',
+                        data=json.dumps(product),
+                        http_verb='PUT'
+                    )
+                    logger.info(f"Restored {quantity} units of {product_id}")
+                except Exception as e:
+                    logger.error(f"Failed to restore inventory for {product_id}: {e}")
+
+            order['status'] = 'cancelled'
+            from datetime import datetime, timezone
+            order['cancelledAt'] = datetime.now(timezone.utc).isoformat()
+
+            d.save_state(store_name=DAPR_STORE_NAME, key=order_id, value=json.dumps(order))
+            logger.info(f"Order cancelled: {order_id}")
+            return jsonify(order), 200
+
+    except Exception as e:
+        logger.error(f"Error cancelling order: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/orders/<order_id>', methods=['GET'])
 def get_order(order_id):
     """Get an order by ID"""

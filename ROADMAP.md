@@ -165,24 +165,26 @@ Deploy to Azure Kubernetes Service with Terraform. Public access via Azure DNS l
 
 ---
 
-## Phase 7: AI Integration (Manual)
+## Phase 7: AI Integration (Manual) + Order Lifecycle
 
-"Copy for AI" button in the React frontend exports catalog and order data as a structured prompt for Claude Desktop. Also adds `GET /orders` endpoint to order-service.
+"Copy for AI" button exports pending orders for fraud review in Claude Desktop. Orders panel with Ship/Cancel buttons. Cancel restores inventory.
 
 **What you'll learn:**
-- Exporting microservice data as a structured AI prompt
-- Using Claude to analyze business data for product recommendations
+- Exporting business data as a structured AI prompt for fraud review
+- Order lifecycle: pending_shipment → shipped/cancelled
+- Inventory restoration on cancellation (same pattern as saga compensation)
 
 **Location**: [deployments/kubernetes-phase7-ai/](deployments/kubernetes-phase7-ai/)
 
 ---
 
-## Phase 7-A: AI Fraud Check in Order Workflow
+## Phase 7-A: AI Fraud Scoring in Order Workflow
 
-Add an AI-powered fraud detection step to the order fulfillment saga. `CheckFraudActivity` calls Claude via the Dapr Conversation API to assess each order before payment. If flagged, the workflow compensates (releases inventory) and rejects the order.
+Add an AI-powered fraud scoring step to the order fulfillment saga. `CheckFraudActivity` calls Claude via the Dapr Conversation API to score each order's risk (0-100) before payment. Orders scoring >= 80 are rejected. `RecordOrderActivity` saves approved orders to the state store as "pending_shipment" with their fraud score.
 
 **What you'll learn:**
 - Adding an LLM call to a deterministic Dapr Workflow
+- Score-based AI assessment (0-100) — humans set the threshold, not the LLM
 - Dapr Conversation API — provider-agnostic LLM abstraction
 - API key management via Kubernetes secrets + Dapr `secretKeyRef`
 - Graceful degradation when AI is unavailable
@@ -190,9 +192,10 @@ Add an AI-powered fraud detection step to the order fulfillment saga. `CheckFrau
 **Saga steps (updated from Phase 5):**
 1. ValidateOrderActivity
 2. ReserveInventoryActivity
-3. CheckFraudActivity (NEW — Dapr Conversation API → Claude)
+3. CheckFraudActivity (NEW — fraud score 0-100 via Dapr Conversation API → Claude)
 4. ProcessPaymentActivity
 5. NotifyCustomerActivity
+6. RecordOrderActivity (NEW — saves to order-service state store)
 
 **Location**: [deployments/kubernetes-phase7-ai/](deployments/kubernetes-phase7-ai/)
 

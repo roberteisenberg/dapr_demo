@@ -13,6 +13,7 @@ namespace WorkflowService.Workflows;
 /// 3. Check fraud via AI (Dapr Conversation API → Claude)
 /// 4. Process payment (triggers compensation on failure)
 /// 5. Notify customer
+/// 6. Record order (persist to order-service state store as "pending_shipment")
 /// </summary>
 public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
 {
@@ -50,27 +51,36 @@ public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
                 Message: $"Inventory reservation failed: {reservation.Message}");
         }
 
-        // Step 3: Check fraud (AI-powered via Dapr Conversation API)
-        Console.WriteLine($"[Workflow] Step 3: Checking fraud for order {input.OrderId}");
-        var fraudResult = await context.CallActivityAsync<FraudCheckResult>(
-            nameof(CheckFraudActivity),
-            (input, reservation));
-
-        if (!fraudResult.Approved)
+        // Step 3: Check fraud (AI-powered via Dapr Conversation API) — skippable for manual review flow
+        FraudCheckResult fraudResult;
+        if (input.SkipFraudCheck)
         {
-            // COMPENSATION: Release reserved inventory
-            Console.WriteLine($"[Workflow] Order {input.OrderId} flagged for fraud ({fraudResult.RiskLevel} risk), triggering compensation");
-            await context.CallActivityAsync<bool>(
-                nameof(ReleaseInventoryActivity),
-                reservation);
-
-            return new OrderResult(
-                input.OrderId,
-                Status: "Failed",
-                Message: $"Order flagged for fraud ({fraudResult.RiskLevel} risk): {fraudResult.Reasoning}. Inventory has been released.");
+            Console.WriteLine($"[Workflow] Step 3: Skipping fraud check for order {input.OrderId} (manual review mode)");
+            fraudResult = new FraudCheckResult(input.OrderId, Score: 0, RiskLevel: "skipped", Reasoning: "Fraud check skipped — order will be reviewed manually");
         }
+        else
+        {
+            Console.WriteLine($"[Workflow] Step 3: Checking fraud for order {input.OrderId}");
+            fraudResult = await context.CallActivityAsync<FraudCheckResult>(
+                nameof(CheckFraudActivity),
+                (input, reservation));
 
-        Console.WriteLine($"[Workflow] Fraud check passed for order {input.OrderId}: {fraudResult.RiskLevel} risk");
+            if (fraudResult.Score >= 80)
+            {
+                // COMPENSATION: Release reserved inventory
+                Console.WriteLine($"[Workflow] Order {input.OrderId} rejected for fraud (score={fraudResult.Score}, {fraudResult.RiskLevel} risk), triggering compensation");
+                await context.CallActivityAsync<bool>(
+                    nameof(ReleaseInventoryActivity),
+                    reservation);
+
+                return new OrderResult(
+                    input.OrderId,
+                    Status: "Failed",
+                    Message: $"Order rejected — fraud score {fraudResult.Score}/100 ({fraudResult.RiskLevel} risk): {fraudResult.Reasoning}. Inventory has been released.");
+            }
+
+            Console.WriteLine($"[Workflow] Fraud check passed for order {input.OrderId}: score={fraudResult.Score} ({fraudResult.RiskLevel} risk)");
+        }
 
         // Step 4: Process payment
         Console.WriteLine($"[Workflow] Step 4: Processing payment for order {input.OrderId}");
@@ -108,6 +118,30 @@ public class OrderFulfillmentWorkflow : Workflow<OrderRequest, OrderResult>
         await context.CallActivityAsync<bool>(
             nameof(NotifyCustomerActivity),
             notificationRequest);
+
+        // Step 6: Record order to state store (fire-and-forget)
+        Console.WriteLine($"[Workflow] Step 6: Recording order {input.OrderId} to state store");
+
+        var recordRequest = new RecordOrderRequest(
+            input.OrderId,
+            input.ProductId,
+            reservation.ProductName,
+            reservation.ProductCategory,
+            input.Quantity,
+            reservation.UnitPrice,
+            totalAmount,
+            Status: "pending_shipment",
+            input.CustomerName,
+            input.CustomerEmail,
+            input.ShippingAddress,
+            DateTime.UtcNow.ToString("o"),
+            paymentResult.TransactionId,
+            fraudResult.Score,
+            fraudResult.Reasoning);
+
+        await context.CallActivityAsync<bool>(
+            nameof(RecordOrderActivity),
+            recordRequest);
 
         // Workflow completed successfully
         Console.WriteLine($"[Workflow] Order {input.OrderId} fulfilled successfully. Total: ${totalAmount}");
