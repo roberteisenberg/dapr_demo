@@ -1,7 +1,11 @@
 # Dapr Microservices Demo
 
-A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered recommendations utilizing Dapr services that call the Claude API to automatically recommend new products.
+A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered fraud detection utilizing Dapr workflow to call the Claude API. 
 
+> **Coming Soon:** Dedicated repos and deep dives:
+> - AI agent orchestration with Dapr Agents
+> - Using Aspire with Dapr
+ 
 > **Note:** This repository is primarily a working reference implementation. It contains separate directories for each phase allowing comparing the implementation code to each topic. The documentation and walkthroughs were added as a companion guide and have not been through formal tutorial-level QA. If you run into gaps or inconsistencies, the code and scripts themselves are the source of truth.
 
 ## What You'll Learn
@@ -15,7 +19,7 @@ A hands-on project demonstrating Dapr microservices from local development to cl
 - **Distributed Tracing**: Zipkin integration for visualizing request flows
 - **Saga Pattern**: Dapr Workflow with automatic compensation on failure
 - **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
-- **AI Agents**: Dapr Agents framework for durable, scalable AI agent orchestration (planned)
+- **AI Integration**: LLM-powered fraud detection via Dapr Conversation API, plus manual AI review workflow
 - **Enterprise Security**: End-to-end security from React app to AKS cluster (planned)
 - **CI/CD**: GitHub Actions pipelines (planned)
 - **API Management**: Azure APIM gateway (planned)
