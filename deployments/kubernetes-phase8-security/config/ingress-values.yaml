@@ -1,0 +1,39 @@
+# Nginx-ingress Helm values for Dapr API gateway pattern on AKS
+# Runs nginx-ingress with a Dapr sidecar for service invocation
+
+# Disable admission webhook (avoids TLS certificate issues)
+controller:
+  admissionWebhooks:
+    enabled: false
+
+  # Allow auth-url annotations (blocked by default as "risky" since ingress-nginx 1.9+)
+  config:
+    annotations-risk-level: "Critical"
+
+  # Use LoadBalancer for public access (AKS assigns public IP)
+  service:
+    type: LoadBalancer
+    labels:
+      purpose: "dapr-demo-api-gateway"
+    # DNS label annotation is added dynamically by setup-azure.sh:
+    # service.beta.kubernetes.io/azure-dns-label-name: "dapr-demo-xxx"
+
+  # Use a custom ingress class to avoid conflicts with other ingress controllers
+  ingressClass: "dapr"
+  ingressClassResource:
+    name: "dapr"
+    enabled: true
+    default: false
+
+  # Dapr sidecar annotations - this is what makes it an API gateway
+  podAnnotations:
+    dapr.io/enabled: "true"
+    dapr.io/app-id: "api-gateway"
+    dapr.io/app-port: "80"
+    dapr.io/config: "tracing"
+    # Required since Dapr 1.4 - allows sidecar to listen on all interfaces
+    dapr.io/sidecar-listen-addresses: "0.0.0.0"
+
+  # Scope to dapr-demo namespace only
+  scope:
+    enabled: true

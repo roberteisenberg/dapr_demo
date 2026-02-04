@@ -2,6 +2,8 @@
 
 Deploy the Dapr microservices demo with AI capabilities. This phase introduces AI in two steps:
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 - **Phase 7 (Manual):** "Copy for AI" button exports pending orders for fraud review in Claude Desktop
 - **Phase 7-A (Fraud Check):** AI-powered fraud scoring in the order fulfillment workflow via Dapr Conversation API
 

@@ -1,0 +1,89 @@
+# OAuth2 Proxy - validates Azure AD JWT tokens on ingress subrequests
+# The Secret (oauth2-proxy-secret) and ConfigMap (oauth2-proxy-config) are
+# created by deploy-all.sh with the correct Azure AD values. This manifest
+# only contains the Deployment and Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: dapr-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      containers:
+      - name: oauth2-proxy
+        image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+        ports:
+        - containerPort: 4180
+          name: http
+        args:
+        - --http-address=0.0.0.0:4180
+        - --provider=oidc
+        - --skip-provider-button=true
+        - --upstream=static://200
+        - --email-domain=*
+        - --cookie-secure=true
+        - --cookie-samesite=lax
+        - --skip-jwt-bearer-tokens=true
+        - --oidc-email-claim=preferred_username
+        - --oidc-groups-claim=groups
+        - --extra-jwt-issuers=https://login.microsoftonline.com/$(AZURE_TENANT_ID)/v2.0=api://$(AZURE_CLIENT_ID),https://sts.windows.net/$(AZURE_TENANT_ID)/=api://$(AZURE_CLIENT_ID)
+        - --client-id=$(AZURE_CLIENT_ID)
+        - --client-secret=not-used-for-jwt-validation
+        env:
+        - name: AZURE_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: oauth2-proxy-config
+              key: AZURE_CLIENT_ID
+        - name: AZURE_TENANT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: oauth2-proxy-config
+              key: AZURE_TENANT_ID
+        - name: OAUTH2_PROXY_OIDC_ISSUER_URL
+          value: "https://login.microsoftonline.com/$(AZURE_TENANT_ID)/v2.0"
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy-secret
+              key: cookie-secret
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: dapr-demo
+spec:
+  selector:
+    app: oauth2-proxy
+  ports:
+  - port: 4180
+    targetPort: 4180
+    name: http

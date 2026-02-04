@@ -1,0 +1,17 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: anthropic-llm
+  namespace: dapr-demo
+spec:
+  type: conversation.anthropic
+  version: v1
+  metadata:
+  - name: key
+    secretKeyRef:
+      name: anthropic-api-key
+      key: api-key
+  - name: model
+    value: "claude-sonnet-4-20250514"
+scopes:
+- workflow-service

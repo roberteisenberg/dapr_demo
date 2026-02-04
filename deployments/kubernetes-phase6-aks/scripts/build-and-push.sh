@@ -84,5 +84,5 @@ if [[ "$WITH_FRONTEND" == "true" ]]; then
     echo "  - $DOCKER_REGISTRY/dapr-web-app:latest"
 fi
 echo ""
-echo "Next step: ./scripts/deploy-all.sh"
+echo "Next step: ./scripts/deploy-all.sh [--with-frontend] [--pubsub redis|rabbitmq] [--statestore redis|mongodb]"
 echo "========================================="

@@ -1,0 +1,55 @@
+# Optional: React web application frontend
+# Deploy with: ./scripts/deploy-all.sh --with-frontend
+#
+# Phase 8: ConfigMap web-app-config provides runtime Azure AD config.
+# It is created by deploy-all.sh (not in this manifest) and mounted over
+# public/config.js in the nginx container. Without --with-security,
+# the ConfigMap has empty values and auth is disabled.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: dapr-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - name: web-app
+        image: reisenberg100/dapr-web-app:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/nginx/html/config.js
+          subPath: config.js
+      volumes:
+      - name: config
+        configMap:
+          name: web-app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: dapr-demo
+spec:
+  selector:
+    app: web-app
+  ports:
+  - port: 80
+    targetPort: 80

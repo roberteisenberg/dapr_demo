@@ -2,6 +2,8 @@
 
 Deploy the Dapr microservices demo to Kubernetes using minikube.
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of automatic sidecar injection, the API gateway pattern, and how this differs from Docker Compose.
 
 ## What's Different from Docker Compose?

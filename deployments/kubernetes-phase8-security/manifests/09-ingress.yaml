@@ -1,0 +1,68 @@
+# Ingress split into two resources for Phase 8 security:
+# 1. API routes (/v1.0/*) - protected by OAuth2 Proxy JWT validation
+# 2. Web app (/) - public (SPA must load before user can sign in)
+#
+# TLS is required because MSAL.js needs window.crypto.subtle (HTTPS only).
+# cert-manager + Let's Encrypt provides the certificate automatically.
+#
+# When deployed without --with-security, 09-ingress-nosecurity.yaml is used instead
+# (single ingress, no auth annotations, same as Phase 6/7).
+
+# Protected API ingress - requires valid Azure AD JWT
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dapr-demo-ingress-api
+  namespace: dapr-demo
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # OAuth2 Proxy subrequest authentication
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.dapr-demo.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-response-headers: "Authorization"
+spec:
+  ingressClassName: dapr
+  tls:
+  - hosts:
+    - FQDN_PLACEHOLDER
+    secretName: dapr-demo-tls
+  rules:
+  - host: FQDN_PLACEHOLDER
+    http:
+      paths:
+        # Dapr service invocation API - protected by JWT validation
+        - path: /v1.0
+          pathType: Prefix
+          backend:
+            service:
+              name: api-gateway-dapr
+              port:
+                number: 80
+---
+# Public web app ingress - no auth required
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dapr-demo-ingress-web
+  namespace: dapr-demo
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: dapr
+  tls:
+  - hosts:
+    - FQDN_PLACEHOLDER
+    secretName: dapr-demo-tls
+  rules:
+  - host: FQDN_PLACEHOLDER
+    http:
+      paths:
+        # React SPA - must be public so login page can load
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: web-app
+              port:
+                number: 80

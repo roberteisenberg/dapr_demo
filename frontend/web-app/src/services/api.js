@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { addLog, parseDaprUrl, formatDescription, LogType } from './statusLog';
+import { msalInstance, tokenRequest, authEnabled } from '../authConfig';
 
 // API base URL - uses proxy in development, direct URL in production
 const API_BASE_URL = process.env.REACT_APP_API_URL || '';
@@ -11,9 +12,28 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - log outgoing Dapr calls
-api.interceptors.request.use((config) => {
+// Request interceptor - attach auth token and log outgoing Dapr calls
+api.interceptors.request.use(async (config) => {
   config._startTime = Date.now();
+
+  // Attach Bearer token if auth is enabled
+  if (authEnabled && msalInstance) {
+    try {
+      const accounts = msalInstance.getAllAccounts();
+      console.log('[Auth] accounts:', accounts.length);
+      if (accounts.length > 0) {
+        const response = await msalInstance.acquireTokenSilent({
+          ...tokenRequest,
+          account: accounts[0],
+        });
+        console.log('[Auth] Token acquired, aud:', response.accessToken.substring(0, 20) + '...');
+        config.headers.Authorization = `Bearer ${response.accessToken}`;
+      }
+    } catch (e) {
+      console.error('[Auth] Token acquisition failed:', e);
+    }
+  }
+
   const daprInfo = parseDaprUrl(config.url);
   const httpMethod = (config.method || 'GET').toUpperCase();
   addLog({

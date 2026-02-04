@@ -1,0 +1,59 @@
+# Zipkin with persistent storage for AKS
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zipkin-data
+  namespace: dapr-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: managed-csi
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+  namespace: dapr-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+    spec:
+      containers:
+      - name: zipkin
+        image: openzipkin/zipkin:latest
+        ports:
+        - containerPort: 9411
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        env:
+        - name: STORAGE_TYPE
+          value: "mem"
+        # Note: For production, consider using Elasticsearch or Cassandra
+        # with persistent storage for Zipkin traces
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+  namespace: dapr-demo
+spec:
+  selector:
+    app: zipkin
+  ports:
+  - port: 9411
+    targetPort: 9411
+  type: ClusterIP

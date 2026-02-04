@@ -20,7 +20,7 @@ A hands-on project demonstrating Dapr microservices from local development to cl
 - **Saga Pattern**: Dapr Workflow with automatic compensation on failure
 - **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
 - **AI Integration**: LLM-powered fraud detection via Dapr Conversation API, plus manual AI review workflow
-- **Enterprise Security**: End-to-end security from React app to AKS cluster (planned)
+- **Enterprise Security**: TLS (Let's Encrypt), Azure AD login (MSAL.js/PKCE), JWT validation (OAuth2 Proxy), Dapr access control policies
 - **CI/CD**: GitHub Actions pipelines (planned)
 - **API Management**: Azure APIM gateway (planned)
 
@@ -62,7 +62,8 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
 | 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
 | 7, 7-A | [AI Integration](deployments/kubernetes-phase7-ai/) (Fraud review export, Ship/Cancel orders, AI fraud scoring via Dapr Conversation API) | Available |
-| 8+ | Security, CI/CD, API Management | Planned |
+| 8 | [Security](deployments/kubernetes-phase8-security/) (Azure AD login, JWT validation, Dapr access control) | Available |
+| 9+ | CI/CD, API Management | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
 
@@ -77,6 +78,7 @@ Each phase builds on the previous, adding deployment complexity while keeping se
 5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
 6. **Cloud (Azure AKS) and Terraform** - AKS cluster with public URL. No port-forward needed.
 7. **AI Integration** - Orders panel with Ship/Cancel, "Copy for AI" for fraud review, AI-powered fraud scoring (0-100) in the order workflow via Dapr Conversation API.
+8. **Security** - TLS via Let's Encrypt, Azure AD login (MSAL.js with PKCE), JWT validation at ingress (OAuth2 Proxy), Dapr access control policies between services, mTLS verification.
 
 The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
 

@@ -2,6 +2,8 @@
 
 Deploy the Dapr microservices demo to **Azure Kubernetes Service (AKS)** with images on Docker Hub. Infrastructure provisioned with **Terraform** for reproducible, production-ready deployments.
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of Azure resources, ingress routing, and public access patterns.
 
 ## What's New in Phase 6?

@@ -1,0 +1,44 @@
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: tracing
+  namespace: dapr-demo
+spec:
+  tracing:
+    samplingRate: "1"
+    zipkin:
+      endpointAddress: "http://zipkin.dapr-demo.svc.cluster.local:9411/api/v2/spans"
+  # Phase 8: Dapr access control policies
+  # Restricts which services can call which endpoints via Dapr service invocation.
+  # defaultAction: deny means any call not explicitly allowed is blocked.
+  accessControl:
+    defaultAction: deny
+    trustDomain: "public"
+    policies:
+    # api-gateway (NGINX ingress Dapr sidecar) can call all public-facing services
+    - appId: api-gateway
+      defaultAction: deny
+      trustDomain: "public"
+      namespace: "dapr-demo"
+      operations:
+      - name: /products/*
+        httpVerb: ['GET', 'POST']
+        action: allow
+      - name: /orders/*
+        httpVerb: ['GET', 'POST']
+        action: allow
+      - name: /workflows/*
+        httpVerb: ['GET', 'POST']
+        action: allow
+    # workflow-service can call catalog-service (inventory) and order-service (record orders)
+    - appId: workflow-service
+      defaultAction: deny
+      trustDomain: "public"
+      namespace: "dapr-demo"
+      operations:
+      - name: /products/*
+        httpVerb: ['GET', 'POST', 'PUT']
+        action: allow
+      - name: /orders/*
+        httpVerb: ['GET', 'POST']
+        action: allow

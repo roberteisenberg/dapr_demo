@@ -2,6 +2,8 @@
 
 Deploy the Dapr microservices demo to Kubernetes with **Dapr Workflow** for order orchestration using the **saga pattern**. This phase adds a .NET workflow service that coordinates multi-step transactions with automatic compensation on failure.
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of the saga pattern, workflow activities, and compensation logic.
 
 ## What's New in Phase 5?

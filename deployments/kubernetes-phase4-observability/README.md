@@ -2,6 +2,8 @@
 
 Deploy the Dapr microservices demo to Kubernetes with **Zipkin distributed tracing**. This phase adds observability to the Phase 3 deployment, allowing you to visualize request flows across all services.
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of automatic sidecar injection, the API gateway pattern, and distributed tracing.
 
 ## What's New in Phase 4?

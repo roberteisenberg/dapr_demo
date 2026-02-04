@@ -69,4 +69,4 @@ echo ""
 echo "Images built:"
 docker images | grep -E "(catalog|order|notification)-service|web-app" | head -10
 echo ""
-echo "Next step: ./scripts/deploy-all.sh"
+echo "Next step: ./scripts/deploy-all.sh [--with-frontend] [--pubsub redis|rabbitmq] [--statestore redis|mongodb]"

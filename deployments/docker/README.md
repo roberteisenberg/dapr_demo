@@ -2,6 +2,8 @@
 
 Run the Dapr microservices demo in containers with Docker Compose.
 
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of the sidecar pattern, Docker networking, and how this differs from local development.
 
 ## Why Shared Services?

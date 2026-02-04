@@ -1,6 +1,6 @@
 # Local Development with Dapr
 
-> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them form a Linux terminal.
+> **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed explanations of how the services and Dapr building blocks work.
 

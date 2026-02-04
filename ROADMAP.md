@@ -22,7 +22,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 6 | Cloud (Azure AKS) and Terraform | Available |
 | 7 | AI Integration (manual "Copy for AI") | Available |
 | 7-A | AI Fraud Check in Order Workflow | Available |
-| 8 | End-to-end Security | Planned |
+| 8 | End-to-end Security | Available |
 | 9 | CI/CD (GitHub Actions) | Planned |
 | 10 | API Management | Planned |
 
@@ -201,11 +201,27 @@ Add an AI-powered fraud scoring step to the order fulfillment saga. `CheckFraudA
 
 ---
 
-## Phase 8+: Future
+## Phase 8: End-to-End Security
+
+End-to-end security layered onto the AKS deployment. Five security layers: TLS via Let's Encrypt (cert-manager), Azure AD login in the React app (MSAL.js with PKCE), JWT validation at the ingress (OAuth2 Proxy), Dapr mTLS between sidecars, and Dapr access control policies restricting inter-service calls.
+
+**What you'll learn:**
+- TLS with cert-manager and Let's Encrypt (required for MSAL.js `crypto.subtle`)
+- Azure AD (Entra ID) authentication with MSAL.js in a React SPA (Authorization Code + PKCE)
+- OAuth2 Proxy for JWT validation as an NGINX ingress subrequest
+- Dapr access control policies (allowlist per app-id)
+- Runtime configuration via Kubernetes ConfigMaps (no image rebuild per environment)
+- Automated Azure AD app registration via Microsoft Graph API
+- Dapr mTLS verification
+
+**Location**: [deployments/kubernetes-phase8-security/](deployments/kubernetes-phase8-security/)
+
+---
+
+## Phase 9+: Future
 
 | Phase | Feature | Description |
 |-------|---------|-------------|
-| 8 | End-to-end Security | React app to AKS with Azure AD, mTLS |
 | 9 | CI/CD | GitHub Actions pipelines |
 | 10 | API Management | Azure APIM gateway |
 
@@ -246,10 +262,16 @@ dapr_demo/
     ├── kubernetes/                # Phase 3, 3-A, 3-B
     ├── kubernetes-phase4-observability/
     ├── kubernetes-phase5-workflow/
-    └── kubernetes-phase6-aks/
-        ├── terraform/             # AKS + Resource Group
-        ├── manifests/
-        ├── config/
-        ├── docs/                  # Screenshots
-        └── scripts/
+    ├── kubernetes-phase6-aks/
+    │   ├── terraform/             # AKS + Resource Group
+    │   ├── manifests/
+    │   ├── config/
+    │   ├── docs/                  # Screenshots
+    │   └── scripts/
+    ├── kubernetes-phase7-ai/
+    └── kubernetes-phase8-security/
+        ├── terraform/             # AKS (same as Phase 6)
+        ├── manifests/             # + OAuth2 Proxy, TLS ingress
+        ├── config/                # ingress-values.yaml
+        └── scripts/               # + setup with cert-manager & Azure AD
 ```
