@@ -4,7 +4,9 @@ Add Azure API Management (APIM) with a self-hosted gateway to the AKS deployment
 
 > **Note**: These instructions use bash (Linux/macOS/WSL2). Run them from a Linux terminal.
 
-**Teaching Point:** "Enterprise API gateway capabilities (caching, rate limiting, API versioning) with Dapr's service mesh — the gateway becomes just another Dapr-enabled app."
+**Teaching Points:**
+- "Enterprise API gateway capabilities (caching, rate limiting, API versioning) with Dapr's service mesh — the gateway becomes just another Dapr-enabled app."
+- "Extend an existing deployment without rebuilding — layer new infrastructure (APIM) onto a running system."
 
 ## Why APIM Instead of nginx-ingress?
 
@@ -25,7 +27,7 @@ For simple routing, nginx-ingress is sufficient. APIM adds enterprise API manage
 
 ## Prerequisites
 
-> **Note:** Unlike other phases (3-8) which are fully independent, Phase 9 is an **add-on** that requires an existing AKS cluster with Dapr and the backend services already deployed. Deploy Phase 6, 7, or 8 first, then add Phase 9 on top.
+> **Different Pattern:** Phases 3-8 each deploy a complete system from scratch. Phase 9 demonstrates a different pattern: **extending an existing deployment** with new capabilities. This is how you'd add APIM to a production system — you don't rebuild everything, you layer on new infrastructure. Deploy Phase 6, 7, or 8 first, then add Phase 9 on top.
 
 ### Existing Infrastructure Required
 

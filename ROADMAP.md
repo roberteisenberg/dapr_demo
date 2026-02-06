@@ -23,7 +23,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 7 | AI Integration (manual "Copy for AI") | Available |
 | 7-A | AI Fraud Check in Order Workflow | Available |
 | 8 | End-to-end Security | Available |
-| 9 | API Management | Planned |
+| 9 | API Management | Available |
 | 10 | CI/CD (GitHub Actions) | Planned |
 
 ---
