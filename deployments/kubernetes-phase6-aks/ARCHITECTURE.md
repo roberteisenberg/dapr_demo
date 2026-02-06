@@ -82,6 +82,53 @@ This creates a fully-qualified domain name:
 dapr-demo-{random}.{region}.cloudapp.azure.com
 ```
 
+## Load Balancing Architecture
+
+AKS uses two layers of load balancing working together:
+
+### Layer 4: Azure Load Balancer
+
+When the AKS cluster is created, Azure automatically provisions an Azure Load Balancer (Standard SKU) named `kubernetes`. When nginx-ingress is deployed with `service.type: LoadBalancer`, Azure adds a frontend IP to this load balancer.
+
+**What Azure LB does:**
+- Distributes TCP/UDP packets across nodes running nginx-ingress pods
+- Uses health probes to detect and skip unhealthy nodes
+- Operates at Layer 4 — it does NOT understand HTTP paths, headers, or hostnames
+- Just routes packets by IP:port to healthy backend nodes
+
+### Layer 7: nginx-ingress
+
+nginx-ingress runs as pods inside the cluster and provides Layer 7 (HTTP) routing:
+
+**What nginx-ingress does:**
+- Receives traffic from Azure LB
+- Reads HTTP path, host, headers
+- Routes based on Ingress rules: `/v1.0/*` → Dapr sidecar, `/*` → web-app
+- Load balances across backend pod IPs
+
+### Traffic Flow Example
+
+```
+Request: GET /v1.0/invoke/catalog-service/method/products
+
+1. Client sends request to public IP (dapr-demo.eastus.cloudapp.azure.com)
+2. Azure Load Balancer receives packet
+3. Azure LB picks a healthy node running nginx-ingress (L4 balancing)
+4. kube-proxy on node forwards to nginx-ingress pod
+5. nginx-ingress reads HTTP path, matches /v1.0/* rule
+6. nginx forwards to api-gateway-dapr service (Dapr sidecar)
+7. Dapr sidecar invokes catalog-service via service mesh
+```
+
+### Division of Labor
+
+| Layer | Component | Balances Across | How |
+|-------|-----------|-----------------|-----|
+| L4 | Azure Load Balancer | Nodes running nginx-ingress | Health probes, round-robin/hash |
+| L7 | nginx-ingress | Backend pods | HTTP routing rules, upstream balancing |
+
+Both layers perform load balancing, but at different levels. Azure LB picks which node to send traffic to, and nginx-ingress picks which backend pod handles the request.
+
 ## Persistent Storage
 
 ### Minikube

@@ -1,0 +1,79 @@
+<policies>
+    <inbound>
+        <base />
+
+        <!-- Rate limiting varies by operation -->
+        <choose>
+            <when condition="@(context.Request.Method == &quot;POST&quot;)">
+                <!-- POST /orders: 100 requests per minute -->
+                <rate-limit-by-key calls="100"
+                                  renewal-period="60"
+                                  counter-key="@(context.Subscription?.Key ?? context.Request.IpAddress)" />
+            </when>
+            <otherwise>
+                <!-- GET operations: 500 requests per minute -->
+                <rate-limit-by-key calls="500"
+                                  renewal-period="60"
+                                  counter-key="@(context.Subscription?.Key ?? context.Request.IpAddress)" />
+            </otherwise>
+        </choose>
+
+        <!-- Validate POST request body -->
+        <choose>
+            <when condition="@(context.Request.Method == &quot;POST&quot;)">
+                <validate-content unspecified-content-type-action="prevent"
+                                 max-size="10240"
+                                 size-exceeded-action="prevent">
+                    <content type="application/json" validate-as="json"
+                             action="prevent" />
+                </validate-content>
+            </when>
+        </choose>
+
+        <!-- Route based on operation -->
+        <choose>
+            <when condition="@(context.Request.Method == &quot;POST&quot;)">
+                <!-- POST /orders -> workflow-service /workflows/order -->
+                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/workflow-service/method" />
+                <rewrite-uri template="/workflows/order" />
+            </when>
+            <when condition="@(context.Request.Url.Path.Contains(&quot;/&quot;) &amp;&amp; context.Request.Method == &quot;GET&quot;)">
+                <!-- GET /orders/{id} -> workflow-service /workflows/{id} -->
+                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/workflow-service/method" />
+                <rewrite-uri template="@{
+                    var path = context.Request.Url.Path;
+                    var orderId = path.Substring(path.LastIndexOf('/') + 1);
+                    return &quot;/workflows/&quot; + orderId;
+                }" />
+            </when>
+            <otherwise>
+                <!-- GET /orders -> order-service /orders -->
+                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/order-service/method" />
+                <rewrite-uri template="/orders" />
+            </otherwise>
+        </choose>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+        <!-- Add request ID for tracing -->
+        <set-header name="X-Request-Id" exists-action="override">
+            <value>@(context.RequestId.ToString())</value>
+        </set-header>
+    </outbound>
+    <on-error>
+        <base />
+        <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+        </set-header>
+        <set-body>@{
+            return new JObject(
+                new JProperty("error", true),
+                new JProperty("message", context.LastError?.Message ?? "An error occurred"),
+                new JProperty("requestId", context.RequestId.ToString())
+            ).ToString();
+        }</set-body>
+    </on-error>
+</policies>

@@ -50,6 +50,17 @@ Phase 8 adds five layers of security, each independent and composable:
 └────────────────────────────────────────────────────────────────────┘
 ```
 
+### Load Balancing Layers
+
+The diagram shows two load balancing layers working together:
+
+| Layer | Component | Function |
+|-------|-----------|----------|
+| **L4** | AKS Load Balancer | Routes TCP packets to nodes running nginx-ingress. Does NOT understand HTTP. |
+| **L7** | NGINX Ingress | Reads HTTP paths/headers. Routes `/v1.0/*` to Dapr, `/*` to web-app. |
+
+The Azure Load Balancer (automatically provisioned by AKS) distributes traffic across nginx-ingress pods. nginx-ingress then applies security annotations (`auth-url` for OAuth2 Proxy) and routes to backend services. See Phase 6's ARCHITECTURE.md for detailed explanation.
+
 ## How the Security Works
 
 The core principle: **both the frontend and backend independently trust Azure AD as the identity provider**. Neither side handles passwords or manages user accounts directly.

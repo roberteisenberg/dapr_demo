@@ -23,8 +23,8 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 7 | AI Integration (manual "Copy for AI") | Available |
 | 7-A | AI Fraud Check in Order Workflow | Available |
 | 8 | End-to-end Security | Available |
-| 9 | CI/CD (GitHub Actions) | Planned |
-| 10 | API Management | Planned |
+| 9 | API Management | Planned |
+| 10 | CI/CD (GitHub Actions) | Planned |
 
 ---
 
@@ -222,8 +222,8 @@ End-to-end security layered onto the AKS deployment. Five security layers: TLS v
 
 | Phase | Feature | Description |
 |-------|---------|-------------|
-| 9 | CI/CD | GitHub Actions pipelines |
-| 10 | API Management | Azure APIM gateway |
+| 9 | API Management | Azure APIM self-hosted gateway with Dapr |
+| 10 | CI/CD | GitHub Actions pipelines |
 
 ---
 

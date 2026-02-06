@@ -63,7 +63,8 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
 | 7, 7-A | [AI Integration](deployments/kubernetes-phase7-ai/) (Fraud review export, Ship/Cancel orders, AI fraud scoring via Dapr Conversation API) | Available |
 | 8 | [Security](deployments/kubernetes-phase8-security/) (Azure AD login, JWT validation, Dapr access control) | Available |
-| 9+ | CI/CD, API Management | Planned |
+| 9 | API Management (Azure APIM self-hosted gateway with Dapr) | Planned |
+| 10 | CI/CD (GitHub Actions) | Planned |
 
 See [ROADMAP.md](ROADMAP.md) for details.
 

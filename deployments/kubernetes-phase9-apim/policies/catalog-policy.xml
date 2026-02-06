@@ -1,0 +1,39 @@
+<policies>
+    <inbound>
+        <base />
+
+        <!-- Rate limiting: 1000 requests per minute per IP -->
+        <rate-limit-by-key calls="1000"
+                          renewal-period="60"
+                          counter-key="@(context.Request.IpAddress)" />
+
+        <!-- Check cache first -->
+        <cache-lookup vary-by-developer="false"
+                      vary-by-developer-groups="false"
+                      downstream-caching-type="public"
+                      caching-type="internal">
+            <vary-by-header>Accept</vary-by-header>
+        </cache-lookup>
+
+        <!-- Route to catalog-service via Dapr sidecar -->
+        <set-backend-service base-url="http://localhost:3500/v1.0/invoke/catalog-service/method" />
+
+        <!-- Rewrite path: /api/v1/catalog -> /products -->
+        <rewrite-uri template="/products{context.Request.Url.Path.Replace(&quot;/api/v1/catalog&quot;, &quot;&quot;)}" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+        <!-- Cache response for 60 seconds -->
+        <cache-store duration="60" />
+        <!-- Add cache status header for debugging -->
+        <set-header name="X-Cache-Status" exists-action="override">
+            <value>@(context.Response.Headers.ContainsKey("X-Cache") ? "HIT" : "MISS")</value>
+        </set-header>
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

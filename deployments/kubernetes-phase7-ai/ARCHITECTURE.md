@@ -110,6 +110,19 @@ If the Conversation API is unavailable (no API key, service error, timeout), the
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### Load Balancing Note (minikube vs AKS)
+
+This phase runs on minikube for local development. The load balancing pattern is the same as Phase 6 (AKS) but without Azure Load Balancer:
+
+| Environment | L4 (Packet Routing) | L7 (HTTP Routing) |
+|-------------|---------------------|-------------------|
+| **minikube** | `minikube tunnel` or port-forward | nginx-ingress |
+| **AKS (Phase 6)** | Azure Load Balancer | nginx-ingress |
+
+In minikube, traffic enters via `minikube tunnel` (which exposes LoadBalancer services to localhost) or `kubectl port-forward`. nginx-ingress then provides the same L7 routing as on AKS — reading HTTP paths and routing to backend pods.
+
+See Phase 6's ARCHITECTURE.md for detailed explanation of L4/L7 load balancing layers.
+
 ## What Changed from Phase 5
 
 ### Workflow-Service Changes
