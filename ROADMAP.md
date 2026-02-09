@@ -24,7 +24,12 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 7-A | AI Fraud Check in Order Workflow | Available |
 | 8 | End-to-end Security | Available |
 | 9 | API Management | Available |
-| 10 | CI/CD (GitHub Actions) | Planned |
+| 10 | CI/CD + Developer Experience | Planned |
+| 11 | Resilience | Planned |
+| 12 | Actors | Planned |
+| 13 | Runtime Flexibility | Planned |
+| 14 | Multi-Cloud Integration | Planned |
+| 15 | Cloud Portability | Planned |
 
 ---
 
@@ -218,12 +223,91 @@ End-to-end security layered onto the AKS deployment. Five security layers: TLS v
 
 ---
 
-## Phase 9+: Future
+## Phase 9: API Management
 
-| Phase | Feature | Description |
-|-------|---------|-------------|
-| 9 | API Management | Azure APIM self-hosted gateway with Dapr |
-| 10 | CI/CD | GitHub Actions pipelines |
+Add Azure API Management (APIM) with a self-hosted gateway to the AKS deployment. The gateway runs inside the cluster with a Dapr sidecar, using Dapr service invocation to route requests to backend services.
+
+**What you'll learn:**
+- Azure APIM self-hosted gateway with Dapr sidecar
+- Response caching, rate limiting, request validation via APIM policies
+- API versioning and subscription keys
+- Dapr service invocation from APIM (`set-backend-service` with `dapr-app-id`)
+- Extending an existing deployment without rebuilding
+
+**Alternative discussed:** Envoy Gateway implements the Kubernetes Gateway API (the direction K8s is heading) and offers richer L7 observability, native gRPC, and traffic management. However, NGINX is simpler for a demo, and Envoy overlaps significantly with APIM's features without replacing its management plane (developer portal, subscriptions, analytics).
+
+**Location**: [deployments/kubernetes-phase9-apim/](deployments/kubernetes-phase9-apim/)
+
+---
+
+## Phase 10: CI/CD + Developer Experience
+
+GitHub Actions pipelines for automated build, test, and deployment. Plus VS Code debugging configuration for developing services with Dapr sidecars.
+
+**What you'll learn:**
+- GitHub Actions for CI/CD with Dapr microservices
+- Automated image builds, testing, and deployment to AKS
+- Multi-container debugging in VS Code with Dapr sidecars (`.vscode/launch.json`)
+- Pipeline evolution as new phases are added
+
+---
+
+## Phase 11: Resilience
+
+Production-harden the application with Dapr resiliency policies, pub/sub dead letter handling, and horizontal pod autoscaling under load. All visible through Phase 4's Zipkin tracing.
+
+**What you'll learn:**
+- Dapr resiliency policies — retries with exponential backoff, timeouts, circuit breakers (one YAML file, zero code changes)
+- Pub/sub dead letter topics — failed messages routed to a dead letter topic instead of lost
+- Horizontal Pod Autoscaler (HPA) with load testing (k6 or hey) and Zipkin visualization of scaling behavior
+
+**Demo walkthrough:** Kill a service → circuit breaker trips → retries succeed when it recovers. Poison a pub/sub message → dead letter catches it. Flood requests → pods scale up → traces stay healthy.
+
+---
+
+## Phase 12: Actors
+
+Replace direct state store operations for inventory with Dapr virtual actors. Each product becomes an actor managing its own stock, eliminating concurrency issues with competing orders.
+
+**What you'll learn:**
+- Dapr virtual actor pattern for stateful, concurrent entities
+- Actor-based inventory management (turn-based access eliminates race conditions)
+- The same actor model that powers Dapr Workflow internally and Dapr Agents' `DurableAgent` for scalable AI
+
+---
+
+## Phase 13: Runtime Flexibility
+
+Change application behavior at runtime without redeployment. Feature flags via the Dapr Configuration API and scheduled background tasks via Dapr Jobs or cron bindings.
+
+**What you'll learn:**
+- Dapr Configuration API for feature flags (toggle fraud check, maintenance mode) backed by Redis
+- Dapr cron binding or Jobs API for scheduled tasks (inventory reports, stale order cleanup)
+- Input bindings (not covered elsewhere in the project)
+
+---
+
+## Phase 14: Multi-Cloud Integration
+
+Extend the AKS deployment to interact with services and storage on AWS. Cross-cloud calls go through Dapr bindings and service invocation — the application code has no cloud-specific imports.
+
+**What you'll learn:**
+- Dapr output/input bindings (AWS S3 for fraud document storage)
+- Dapr service invocation for external HTTP endpoints (`HTTPEndpoint`) — no Dapr sidecar needed on the target
+- Cross-cloud secret management (Azure Key Vault storing AWS credentials, accessed via Dapr secret store)
+- Cross-cloud observability — Zipkin traces spanning Azure and AWS calls
+- Dapr resiliency policies applied to cross-cloud calls automatically
+
+---
+
+## Phase 15: Cloud Portability
+
+Deploy the entire application to AWS EKS with Terraform. Service code, Dapr component YAMLs, and Kubernetes manifests stay unchanged. Only the Terraform and cloud-specific configuration change.
+
+**What you'll learn:**
+- Three tiers of cloud portability: Dapr abstractions (swap a YAML), cloud infrastructure (different Terraform), and proprietary dependencies (APIM — rearchitect)
+- EKS cluster provisioning with Terraform
+- The real cost of vendor lock-in — contrast "swap Redis for RabbitMQ in 30 seconds" with "migrate APIM to AWS API Gateway over weeks"
 
 ---
 
@@ -269,9 +353,15 @@ dapr_demo/
     │   ├── docs/                  # Screenshots
     │   └── scripts/
     ├── kubernetes-phase7-ai/
-    └── kubernetes-phase8-security/
-        ├── terraform/             # AKS (same as Phase 6)
-        ├── manifests/             # + OAuth2 Proxy, TLS ingress
-        ├── config/                # ingress-values.yaml
-        └── scripts/               # + setup with cert-manager & Azure AD
+    ├── kubernetes-phase8-security/
+    │   ├── terraform/             # AKS (same as Phase 6)
+    │   ├── manifests/             # + OAuth2 Proxy, TLS ingress
+    │   ├── config/                # ingress-values.yaml
+    │   └── scripts/               # + setup with cert-manager & Azure AD
+    └── kubernetes-phase9-apim/
+        ├── terraform/             # APIM instance + self-hosted gateway
+        ├── k8s/                   # Gateway deployment with Dapr
+        ├── policies/              # APIM policies (caching, rate limiting)
+        ├── api-definitions/       # OpenAPI specs
+        └── scripts/
 ```

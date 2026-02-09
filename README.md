@@ -1,6 +1,10 @@
 # Dapr Microservices Demo
 
-A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered fraud detection utilizing Dapr workflow to call the Claude API. 
+A hands-on project demonstrating Dapr microservices from local development to cloud-ready Kubernetes — covering Infrastructure as Code, distributed workflows, and AI-powered fraud detection utilizing Dapr workflow to call the Claude API.
+
+**[Dapr](https://dapr.io/)** (Distributed Application Runtime) is a runtime that simplifies building microservices. It runs as a "sidecar" process alongside each service, providing built-in capabilities — state management, messaging, service discovery, retries, observability — through a simple HTTP/gRPC API. Your code talks to `localhost:3500` and Dapr handles the rest. Swap Redis for RabbitMQ by changing a YAML file, not your code.
+
+**[Kubernetes](https://kubernetes.io/)** is a container orchestration platform originally developed by Google to manage its massive data center infrastructure, then open-sourced in 2014. It has since become the industry standard for deploying and scaling containerized applications. This project starts without it (Phases 1–2) so you can see Dapr's value before Kubernetes enters the picture in Phase 3. Dapr and Kubernetes are both [CNCF](https://www.cncf.io/) projects. Rather than reinventing the wheel, Dapr leverages established Kubernetes primitives — annotations for sidecar injection, CRDs for component configuration, Helm for installation — while adding application-level concerns like state, messaging, and service invocation on top.
 
 > **Coming Soon:** Dedicated repos and deep dives:
 > - AI agent orchestration with Dapr Agents
@@ -21,8 +25,13 @@ A hands-on project demonstrating Dapr microservices from local development to cl
 - **Infrastructure Portability**: Swap pub/sub (Redis↔RabbitMQ) and state store (Redis↔MongoDB) without code changes
 - **AI Integration**: LLM-powered fraud detection via Dapr Conversation API, plus manual AI review workflow
 - **Enterprise Security**: TLS (Let's Encrypt), Azure AD login (MSAL.js/PKCE), JWT validation (OAuth2 Proxy), Dapr access control policies
-- **CI/CD**: GitHub Actions pipelines (planned)
-- **API Management**: Azure APIM gateway (planned)
+- **API Management**: Azure APIM self-hosted gateway with Dapr service invocation
+- **Resiliency**: Retries, timeouts, circuit breakers, dead letter topics
+- **Virtual Actors**: Dapr Actors for concurrent inventory management
+- **Runtime Configuration**: Feature flags via Dapr Configuration API, scheduled tasks
+- **CI/CD**: GitHub Actions pipelines, VS Code debugging with Dapr sidecars
+- **Multi-Cloud**: Cross-cloud bindings and service invocation (AWS S3, external HTTP endpoints)
+- **Cloud Portability**: Deploy the same application to AWS EKS
 
 ## Quick Start
 
@@ -51,37 +60,7 @@ See [deployments/local/README.md](deployments/local/README.md) for detailed inst
 | notification-service | Node.js | Event subscriber |
 | workflow-service | .NET 8.0 | Order orchestration with saga pattern (Phase 5+) |
 
-## Project Roadmap
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1, 1-A | [Local](deployments/local/) + Redis→RabbitMQ switch | Available |
-| 2, 2-A | [Docker](deployments/docker/) + Redis→RabbitMQ switch | Available |
-| 3, 3-A, 3-B | [Kubernetes](deployments/kubernetes/) + React frontend with status panel + infrastructure swaps | Available |
-| 4 | [Observability](deployments/kubernetes-phase4-observability/) (Zipkin tracing) | Available |
-| 5 | [Workflow](deployments/kubernetes-phase5-workflow/) (.NET Dapr Workflow, saga pattern) | Available |
-| 6 | [Cloud (Azure AKS) and Terraform](deployments/kubernetes-phase6-aks/) | Available |
-| 7, 7-A | [AI Integration](deployments/kubernetes-phase7-ai/) (Fraud review export, Ship/Cancel orders, AI fraud scoring via Dapr Conversation API) | Available |
-| 8 | [Security](deployments/kubernetes-phase8-security/) (Azure AD login, JWT validation, Dapr access control) | Available |
-| 9 | API Management (Azure APIM self-hosted gateway with Dapr) | Available |
-| 10 | CI/CD (GitHub Actions) | Planned |
-
-See [ROADMAP.md](ROADMAP.md) for details.
-
-## Deployment Progression
-
-Each phase builds on the previous, adding deployment complexity while keeping service code unchanged:
-
-1. **Local** - Run from source with `dapr run`. Learn Dapr basics.
-2. **Docker** - Containers with explicit Dapr sidecar management. Learn the sidecar pattern.
-3. **Kubernetes** - Auto-injected sidecars, Ingress API gateway, React frontend with real-time status panel.
-4. **Observability** - Zipkin distributed tracing. Visualize request flows across services.
-5. **Workflow** - Dapr Workflow with saga pattern. Orchestrate multi-step transactions with compensation.
-6. **Cloud (Azure AKS) and Terraform** - AKS cluster with public URL. No port-forward needed.
-7. **AI Integration** - Orders panel with Ship/Cancel, "Copy for AI" for fraud review, AI-powered fraud scoring (0-100) in the order workflow via Dapr Conversation API.
-8. **Security** - TLS via Let's Encrypt, Azure AD login (MSAL.js with PKCE), JWT validation at ingress (OAuth2 Proxy), Dapr access control policies between services, mTLS verification.
-
-The same `services/` directory (with Dockerfiles) is shared between Docker and Kubernetes deployments. Local embeds its own service copies (no Dockerfiles needed).
+See [ROADMAP.md](ROADMAP.md) for the full phase progression.
 
 ## Key Demonstration: Infrastructure Portability
 
