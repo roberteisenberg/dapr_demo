@@ -2,100 +2,146 @@
 
 ## Overview
 
-Phase 9 adds Azure API Management (APIM) as an enterprise API gateway layer. The APIM self-hosted gateway runs inside AKS with a Dapr sidecar, routing requests to backend services through Dapr service invocation.
+Phase 9 adds Azure API Management (APIM) as an enterprise API gateway layer. The APIM cloud gateway (hosted in Azure) enforces policies, then routes through the existing nginx-ingress in AKS. nginx-ingress has a Dapr sidecar that handles service invocation to backend services via mTLS.
 
-**Key architecture change:** APIM gets its own Azure Load Balancer (not going through nginx-ingress). This provides a dedicated public IP for API traffic.
+## Why Cloud Gateway via nginx-ingress?
+
+The original design used an APIM **self-hosted gateway** running as a pod in AKS with its own Dapr sidecar (routing via `localhost:3500`). This would have been the simplest approach — the gateway pod talks directly to Dapr just like any other service.
+
+However, the **APIM Developer SKU limits gateways to 1**, and the built-in managed (cloud) gateway counts as that one. Creating a self-hosted gateway resource fails with `"maximum number of Gateways (1)"`. The Standard/Premium SKUs allow additional gateways but cost significantly more (~$700+/month vs ~$50/month).
+
+The solution: use the **cloud gateway** (which already exists) and route it through nginx-ingress in AKS. nginx-ingress already has a Dapr sidecar from Phase 6-8, so Dapr service invocation, mTLS, and access control all work without changes. APIM's policy features (caching, rate limiting, subscriptions, validation) are fully preserved since they execute in the cloud gateway before the request reaches AKS.
+
+> **Note:** This approach was chosen to keep the demo cost-effective on the Developer SKU (~$50/month). It is also a viable production pattern for small-to-medium workloads — the extra network hop through the cloud gateway adds ~10-50ms of latency, which is negligible for most business APIs. The tradeoff:
+>
+> | | Cloud Gateway (this demo) | Self-Hosted Gateway (Standard/Premium SKU) |
+> |---|---|---|
+> | **Cost** | ~$50/month (Developer) | ~$700+/month (Standard/Premium) |
+> | **Latency** | Extra hop through Azure | Policies execute inside the cluster |
+> | **Offline/edge** | Requires internet connectivity | Works disconnected |
+> | **Operations** | No gateway pods to manage | Must manage gateway deployment + HPA |
+> | **Best for** | Small/medium APIs, cost-sensitive teams | High-throughput, latency-sensitive, or air-gapped workloads |
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│                                      Internet                                          │
-│                                                                                        │
-│            ┌────────────────────────┐              ┌────────────────────────┐         │
-│            │ dapr-demo-api.eastus   │              │ dapr-demo.eastus       │         │
-│            │ .cloudapp.azure.com    │              │ .cloudapp.azure.com    │         │
-│            └───────────┬────────────┘              └───────────┬────────────┘         │
-│                        │                                       │                       │
-│                        ▼                                       ▼                       │
-│            ┌────────────────────────┐              ┌────────────────────────┐         │
-│            │  Azure Load Balancer   │              │  Azure Load Balancer   │         │
-│            │  (APIM Gateway LB)     │              │  (nginx-ingress LB)    │         │
-│            └───────────┬────────────┘              └───────────┬────────────┘         │
-│                        │                                       │                       │
-└────────────────────────┼───────────────────────────────────────┼───────────────────────┘
-                         │                                       │
-┌────────────────────────▼───────────────────────────────────────▼───────────────────────┐
-│                                    AKS Cluster                                          │
-│                                                                                         │
-│  ┌──────────────────────────────────┐        ┌──────────────────────────────────┐     │
-│  │       apim-gateway namespace      │        │       dapr-demo namespace         │     │
-│  │                                   │        │                                   │     │
-│  │  ┌─────────────────────────────┐ │        │  ┌──────────────┐                 │     │
-│  │  │  APIM Self-Hosted Gateway   │ │        │  │  web-app     │ (React SPA)     │     │
-│  │  │  service: LoadBalancer      │ │        │  └──────────────┘                 │     │
-│  │  │  + Dapr sidecar             │ │        │                                   │     │
-│  │  │    (app-id: apim-gateway)   │ │        │  ┌──────────────┐                 │     │
-│  │  └─────────────┬───────────────┘ │        │  │ nginx-ingress│ (for web-app)   │     │
-│  │                │                  │        │  │ + Dapr sidecar│                │     │
-│  │                │ localhost:3500   │        │  └──────────────┘                 │     │
-│  │                │                  │        │                                   │     │
-│  └────────────────┼──────────────────┘        │  ┌──────────────┐ ┌────────────┐ │     │
-│                   │                           │  │catalog-service│ │order-svc  │ │     │
-│                   └───────────────────────────┼─►│  + daprd      │ │ + daprd   │ │     │
-│                                               │  └──────────────┘ └────────────┘ │     │
-│                                               │                                   │     │
-│                                               │  ┌──────────────┐ ┌────────────┐ │     │
-│                                               │  │workflow-svc  │ │notification│ │     │
-│                                               │  │  + daprd     │ │ + daprd    │ │     │
-│                                               │  └──────────────┘ └────────────┘ │     │
-│                                               └───────────────────────────────────┘     │
-│                                                                                         │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-          ┌───────────────────────────────┐
-          │    Azure API Management       │
-          │     (Management Plane)        │
-          │  ┌─────────────────────────┐  │
-          │  │ • API Definitions       │  │
-          │  │ • Policies              │  │
-          │  │ • Subscriptions         │  │
-          │  │ • Analytics             │  │
-          │  └─────────────────────────┘  │
-          └───────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                    Internet                                      │
+│                                                                                  │
+│          ┌─────────────────────────┐            ┌─────────────────────────┐     │
+│          │ APIM Cloud Gateway      │            │ Direct Access           │     │
+│          │ dapr-demo-apim          │            │ dapr-demo-xxx.eastus    │     │
+│          │ .azure-api.net          │            │ .cloudapp.azure.com     │     │
+│          └────────────┬────────────┘            └────────────┬────────────┘     │
+│                       │                                      │                   │
+│                       │  Policies applied:                   │                   │
+│                       │  • Rate limiting                     │                   │
+│                       │  • Caching                           │                   │
+│                       │  • Subscription keys                 │                   │
+│                       │  • Request validation                │                   │
+│                       │                                      │                   │
+│                       └──────────────┬───────────────────────┘                   │
+│                                      │                                           │
+│                                      ▼                                           │
+└──────────────────────────────────────┼───────────────────────────────────────────┘
+                                       │
+┌──────────────────────────────────────▼───────────────────────────────────────────┐
+│                                  AKS Cluster                                     │
+│                                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────────┐ │
+│  │                          dapr-demo namespace                               │ │
+│  │                                                                            │ │
+│  │  ┌───────────────────────────────────────────────────────┐                │ │
+│  │  │  nginx-ingress (ingress controller)                   │                │ │
+│  │  │  + Dapr sidecar (app-id: api-gateway)                 │                │ │
+│  │  │                                                        │                │ │
+│  │  │  Ingress rules:                                        │                │ │
+│  │  │  • /v1.0/*        → api-gateway-dapr (Phase 6-8)      │                │ │
+│  │  │  • /apim/v1.0/*   → api-gateway-dapr (Phase 9, APIM)  │                │ │
+│  │  │  • /              → web-app (Phase 6-8)                │                │ │
+│  │  └───────────────┬───────────────────────────────────────┘                │ │
+│  │                  │                                                         │ │
+│  │                  │ Dapr service invocation (mTLS)                          │ │
+│  │                  │                                                         │ │
+│  │  ┌───────────────▼───────────────────────────────────────────────────┐    │ │
+│  │  │                                                                    │    │ │
+│  │  │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐  │    │ │
+│  │  │  │  catalog-service  │  │  order-service    │  │ workflow-svc   │  │    │ │
+│  │  │  │  + daprd          │  │  + daprd          │  │ + daprd        │  │    │ │
+│  │  │  └──────────────────┘  └──────────────────┘  └────────────────┘  │    │ │
+│  │  │                                                                    │    │ │
+│  │  └────────────────────────────────────────────────────────────────────┘    │ │
+│  │                                                                            │ │
+│  └────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+        ┌───────────────────────────────┐
+        │    Azure API Management       │
+        │     (Management Plane)        │
+        │  ┌─────────────────────────┐  │
+        │  │ • API Definitions       │  │
+        │  │ • Policies              │  │
+        │  │ • Subscriptions         │  │
+        │  │ • Analytics             │  │
+        │  └─────────────────────────┘  │
+        └───────────────────────────────┘
 ```
 
-## Two Public Endpoints
+## Two Access Paths
 
-Phase 9 provides two separate public endpoints:
+Phase 9 provides two ways to reach backend services:
 
-| Endpoint | Load Balancer | Purpose |
-|----------|---------------|---------|
-| `http://dapr-demo-api.{region}.cloudapp.azure.com/api/v1/...` | APIM Gateway LB | API traffic with policies |
-| `http://dapr-demo.{region}.cloudapp.azure.com/` | nginx-ingress LB | Web app (React SPA) |
+| Path | Entry Point | Policies | Use Case |
+|------|-------------|----------|----------|
+| APIM cloud gateway | `https://dapr-demo-apim.azure-api.net/api/v1/...` | Caching, rate limiting, subscriptions, validation | External API consumers |
+| Direct nginx-ingress | `https://dapr-demo-xxx.cloudapp.azure.com/v1.0/...` | Phase 8 OAuth2 (if enabled) | Web app, internal use |
+
+Both paths ultimately reach the same backend services through Dapr service invocation.
+
+## Request Flow
+
+### APIM Cloud Gateway Path
+
+1. **Client** → APIM cloud gateway (`https://dapr-demo-apim.azure-api.net/api/v1/catalog`)
+2. **APIM** → Applies inbound policies (rate limit, validation, cache lookup)
+3. **APIM** → Rewrites URL to `/apim/v1.0/invoke/catalog-service/method/products`
+4. **APIM** → Sends to nginx-ingress backend (`https://dapr-demo-xxx.cloudapp.azure.com`)
+5. **nginx-ingress** → Matches `/apim(/v1\.0/.*)`, rewrites to `/v1.0/invoke/catalog-service/method/products`
+6. **nginx-ingress** → Routes to `api-gateway-dapr` service
+7. **Dapr sidecar** → Service invocation to `catalog-service` via mTLS
+8. **Response** → Back through the chain with outbound policies (cache store, headers)
+
+### Why the /apim Prefix?
+
+The `/apim` prefix distinguishes APIM-routed traffic from direct nginx-ingress traffic:
+
+- `/v1.0/*` — Direct access (Phase 6-8), may have OAuth2 protection
+- `/apim/v1.0/*` — APIM-routed access (Phase 9), no OAuth2 (APIM handles auth via subscription keys)
+
+nginx-ingress `rewrite-target` strips the `/apim` prefix so Dapr receives standard URLs.
 
 ## Components
 
-### APIM Self-Hosted Gateway
+### APIM Cloud Gateway
 
-The self-hosted gateway runs as a container in AKS, connecting to Azure APIM for configuration:
+The cloud gateway is fully managed by Azure — no pods to deploy in AKS:
 
 | Component | Description |
 |-----------|-------------|
-| Gateway Pod | `mcr.microsoft.com/azure-api-management/gateway:2.5.0` |
-| Dapr Sidecar | Handles service invocation to backend services |
-| Config Sync | Pulls API definitions and policies from Azure APIM |
-| HPA | Auto-scales from 2-10 replicas based on CPU/memory |
+| Cloud Gateway | `https://dapr-demo-apim.azure-api.net` (Azure-managed) |
+| Backend | Routes to nginx-ingress FQDN via HTTPS |
+| Policies | Rate limiting, caching, validation, subscription keys |
+| Management | Azure Portal, Terraform |
 
-### Request Flow
+### nginx-ingress (Existing)
 
-1. **Client** → Azure Load Balancer (APIM public IP)
-2. **Azure LB** → APIM Gateway pod (port 8080)
-3. **Gateway** → Applies inbound policies (rate limit, validation, caching)
-4. **Gateway** → Dapr sidecar (`localhost:3500/v1.0/invoke/{service}/method/{endpoint}`)
-5. **Dapr** → Backend service via service invocation (mTLS)
-6. **Response** → Back through the chain with outbound policies
+The existing nginx-ingress from Phase 6-8 gains one new ingress rule:
 
-**No nginx-ingress in the API path.** APIM has its own LoadBalancer service that gets a public IP directly from Azure.
+| Component | Description |
+|-----------|-------------|
+| Ingress Rule | `dapr-demo-ingress-apim`: `/apim/v1.0/*` → `api-gateway-dapr` |
+| Dapr Sidecar | app-id: `api-gateway`, handles service invocation |
+| Rewrite | Strips `/apim` prefix for Dapr |
 
 ## API Surface
 
@@ -126,7 +172,7 @@ Order management through Dapr workflow.
 **Policies:**
 - Rate limit: 100/min (POST), 500/min (GET)
 - Request validation: JSON, max 10KB
-- Backend: `workflow-service` (POST), `order-service` (GET list)
+- Backend: `workflow-service` (POST, GET/{id}), `order-service` (GET list)
 
 ## APIM Policies
 
@@ -147,6 +193,18 @@ Applied to all APIs:
     <set-header name="Server" exists-action="delete" />
   </outbound>
 </policies>
+```
+
+### Backend Routing
+
+Routes through nginx-ingress instead of localhost (no Dapr sidecar on cloud gateway):
+
+```xml
+<!-- Route to nginx-ingress backend in AKS -->
+<set-backend-service backend-id="nginx-ingress-backend" />
+
+<!-- Rewrite URL with /apim prefix (stripped by nginx rewrite-target) -->
+<rewrite-uri template="/apim/v1.0/invoke/catalog-service/method/products" />
 ```
 
 ### Rate Limiting
@@ -188,16 +246,6 @@ JSON validation with size limits:
 </validate-content>
 ```
 
-### Backend Routing via Dapr
-
-Routes to Dapr sidecar for service invocation:
-
-```xml
-<set-backend-service
-    base-url="http://localhost:3500/v1.0/invoke/catalog-service/method" />
-<rewrite-uri template="/products" />
-```
-
 ## Authentication
 
 ### Subscription Keys
@@ -206,111 +254,102 @@ Orders API requires `X-API-Key` header:
 
 ```bash
 # With subscription key
-curl -H "X-API-Key: YOUR_KEY" https://gateway/api/v1/orders
+curl -H "X-API-Key: YOUR_KEY" https://dapr-demo-apim.azure-api.net/api/v1/orders
 
 # Without key → 401 Unauthorized
-curl https://gateway/api/v1/orders
+curl https://dapr-demo-apim.azure-api.net/api/v1/orders
 ```
 
 ### Integration with Phase 8 Security
 
 When combined with Phase 8:
-- **External access**: APIM subscription key + optional Azure AD JWT
-- **Internal services**: Dapr mTLS + access control policies
-- **Web app**: Azure AD login → JWT → APIM validates → Dapr routes
+- **APIM path**: Subscription key authentication (managed by APIM)
+- **Direct path**: Azure AD JWT validation (managed by OAuth2 Proxy)
+- **Internal services**: Dapr mTLS + access control policies (managed by Dapr)
 
 ## Terraform Resources
 
 | Resource | Purpose |
 |----------|---------|
 | `azurerm_api_management` | APIM instance (Developer tier) |
-| `azurerm_api_management_gateway` | Self-hosted gateway definition |
 | `azurerm_api_management_api` | API definitions (catalog, orders) |
+| `azurerm_api_management_backend` | nginx-ingress backend with TLS |
 | `azurerm_api_management_api_policy` | Per-API policies |
-| `azurerm_api_management_product` | Product grouping |
+| `azurerm_api_management_product` | Product grouping for subscriptions |
 | `azurerm_api_management_subscription` | API key subscription |
-
-## Monitoring
-
-### Metrics Available
-
-- Request count by API/operation
-- Response latency percentiles
-- Error rates by status code
-- Cache hit ratio
-- Rate limit hits
-
-### Logs
-
-Gateway logs include:
-- Request/response details
-- Policy execution results
-- Backend errors
-- Dapr sidecar communication
-
-Access via:
-```bash
-kubectl logs -n apim-gateway -l app=apim-gateway -c apim-gateway
-kubectl logs -n apim-gateway -l app=apim-gateway -c daprd
-```
-
-## Scaling
-
-### Horizontal Pod Autoscaler
-
-```yaml
-minReplicas: 2
-maxReplicas: 10
-metrics:
-- type: Resource
-  resource:
-    name: cpu
-    target:
-      type: Utilization
-      averageUtilization: 70
-```
-
-### Production Recommendations
-
-1. **APIM Tier**: Use Standard or Premium for production (Developer is for testing)
-2. **Rate Limit Storage**: Use Redis for distributed rate limiting
-3. **Gateway Replicas**: Minimum 3 across availability zones
-4. **Caching**: Enable Azure Redis Cache for APIM
-5. **Monitoring**: Connect to Azure Monitor and Application Insights
 
 ## Troubleshooting
 
-### Gateway Not Starting
+### APIM Returns 502 Bad Gateway
+
+APIM can reach nginx-ingress but backend service is unavailable:
 
 ```bash
-# Check pod status
-kubectl get pods -n apim-gateway
+# Check backend services
+kubectl get pods -n dapr-demo
 
-# Check gateway logs
-kubectl logs -n apim-gateway -l app=apim-gateway -c apim-gateway
+# Check Dapr sidecar on nginx-ingress
+kubectl logs -n dapr-demo -l app.kubernetes.io/name=ingress-nginx -c daprd
 
-# Verify config endpoint
-kubectl get configmap apim-gateway-env -n apim-gateway -o yaml
+# Test nginx-ingress directly (bypassing APIM)
+curl -k https://dapr-demo-xxx.cloudapp.azure.com/apim/v1.0/invoke/catalog-service/method/products
 ```
 
-### 502 Bad Gateway
+### APIM Returns 500 or Timeout
 
-Usually indicates backend service unavailable:
+APIM cannot reach nginx-ingress:
 
 ```bash
-# Check Dapr sidecar logs
-kubectl logs -n apim-gateway -l app=apim-gateway -c daprd
+# Verify nginx-ingress is accessible
+curl -k https://dapr-demo-xxx.cloudapp.azure.com/
 
-# Verify backend service is running
-kubectl get pods -n dapr-demo
+# Check APIM backend configuration
+cd terraform && terraform output nginx_ingress_fqdn
+
+# Verify APIM ingress rule exists
+kubectl get ingress dapr-demo-ingress-apim -n dapr-demo
 ```
 
 ### Rate Limiting Not Working
 
-```bash
-# Check policy is applied
-az apim api policy show --api-id catalog-api ...
+Rate limiting is handled by APIM cloud gateway (not in AKS):
 
-# Gateway may need restart to pull new config
-kubectl rollout restart deployment/apim-gateway -n apim-gateway
+```bash
+# Verify policy is applied (check in Azure Portal or via API)
+az apim api policy show --api-id catalog-api --resource-group rg-dapr-demo --service-name dapr-demo-apim
+
+# Test with rapid requests
+for i in {1..20}; do curl -s -o /dev/null -w "%{http_code}\n" https://dapr-demo-apim.azure-api.net/api/v1/catalog; done
 ```
+
+### Phase 8 Web App Broken After Phase 9
+
+Phase 9 should not affect Phase 8. The new ingress rule (`/apim/v1.0/*`) is separate from existing rules:
+
+```bash
+# Verify all ingress rules
+kubectl get ingress -n dapr-demo
+
+# Should show:
+# dapr-demo-ingress-api   (Phase 8: /v1.0/*)
+# dapr-demo-ingress-web   (Phase 8: /)
+# dapr-demo-ingress-apim  (Phase 9: /apim/v1.0/*)
+```
+
+## Implementation Notes
+
+Lessons learned while implementing the cloud gateway approach with the Developer SKU.
+
+### Terraform: Backend TLS Block Causes 400
+
+The `azurerm_api_management_backend` resource with a `tls { validate_certificate_chain = false }` block returns a 400 ValidationError on the Developer SKU. Since Let's Encrypt certificates are trusted by Azure's default CA store, the `tls` block is unnecessary — remove it entirely. Only add it if using self-signed certificates on a higher SKU.
+
+### Terraform: Policy Race Condition
+
+API policies that reference `backend-id="nginx-ingress-backend"` fail if the backend hasn't been created yet. Terraform creates independent resources in parallel, so the policy and backend may be created simultaneously. Fix: add `depends_on = [azurerm_api_management_backend.nginx_ingress]` to both `azurerm_api_management_api_policy` resources.
+
+### APIM Policy: `context.Request.Url.Path` Is Null After `set-backend-service`
+
+In APIM policies, `context.Request.Url.Path` becomes null after `<set-backend-service backend-id="..." />` changes the backend. Any `<rewrite-uri>` expression that references the request path must use `context.Request.OriginalUrl.Path` instead, which preserves the original request URL regardless of backend changes. This manifests as a 500 Internal Server Error with "Object reference not set to an instance of an object" in the APIM trace.
+
+To debug: enable tracing with `Ocp-Apim-Trace: true` header (requires subscription key), then fetch the trace URL from the `Ocp-Apim-Trace-Location` response header.

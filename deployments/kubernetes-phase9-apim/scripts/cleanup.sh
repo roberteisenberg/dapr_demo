@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Cleanup Phase 9 APIM resources
-# Removes self-hosted gateway from AKS and optionally Azure resources
+# Removes APIM ingress from AKS and optionally Azure resources
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -91,16 +91,16 @@ cleanup_k8s() {
         return
     fi
 
-    # Check if namespace exists
-    if kubectl get namespace apim-gateway &> /dev/null; then
-        if confirm "Delete apim-gateway namespace and all resources?"; then
-            kubectl delete namespace apim-gateway --wait=true
-            log_success "Kubernetes resources deleted"
+    # Check if APIM ingress exists
+    if kubectl get ingress dapr-demo-ingress-apim -n dapr-demo &> /dev/null; then
+        if confirm "Delete APIM ingress rule (dapr-demo-ingress-apim)?"; then
+            kubectl delete ingress dapr-demo-ingress-apim -n dapr-demo
+            log_success "APIM ingress deleted"
         else
             log_info "Skipping Kubernetes cleanup"
         fi
     else
-        log_info "Namespace apim-gateway not found, nothing to clean"
+        log_info "APIM ingress not found, nothing to clean"
     fi
 }
 

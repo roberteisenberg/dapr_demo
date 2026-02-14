@@ -27,10 +27,9 @@ variable "apim_publisher_email" {
   type        = string
 }
 
-variable "gateway_name" {
-  description = "Self-hosted gateway name"
+variable "nginx_ingress_fqdn" {
+  description = "FQDN of the nginx-ingress in AKS (e.g., dapr-demo-xxx.eastus.cloudapp.azure.com)"
   type        = string
-  default     = "aks-gateway"
 }
 
 variable "tags" {

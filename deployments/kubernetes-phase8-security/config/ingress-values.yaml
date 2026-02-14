@@ -17,6 +17,8 @@ controller:
       purpose: "dapr-demo-api-gateway"
     # DNS label annotation is added dynamically by setup-azure.sh:
     # service.beta.kubernetes.io/azure-dns-label-name: "dapr-demo-xxx"
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
 
   # Use a custom ingress class to avoid conflicts with other ingress controllers
   ingressClass: "dapr"

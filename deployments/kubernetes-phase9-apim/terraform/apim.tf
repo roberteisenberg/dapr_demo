@@ -39,26 +39,21 @@ resource "azurerm_api_management_api" "orders" {
   }
 }
 
-# Associate APIs with self-hosted gateway
-resource "azurerm_api_management_gateway_api" "catalog" {
-  gateway_id = azurerm_api_management_gateway.self_hosted.id
-  api_id     = azurerm_api_management_api.catalog.id
-}
-
-resource "azurerm_api_management_gateway_api" "orders" {
-  gateway_id = azurerm_api_management_gateway.self_hosted.id
-  api_id     = azurerm_api_management_api.orders.id
-}
-
-# Dapr Backend - routes through localhost:3500 (Dapr sidecar)
-resource "azurerm_api_management_backend" "dapr" {
-  name                = "dapr-backend"
+# Backend - routes through nginx-ingress in AKS (which has a Dapr sidecar)
+# APIM cloud gateway cannot use localhost:3500 (no Dapr sidecar in Azure).
+# Instead, it routes to the nginx-ingress public FQDN, which then uses its
+# Dapr sidecar for service invocation with mTLS and access control.
+resource "azurerm_api_management_backend" "nginx_ingress" {
+  name                = "nginx-ingress-backend"
   resource_group_name = data.azurerm_resource_group.rg.name
   api_management_name = azurerm_api_management.apim.name
   protocol            = "http"
-  url                 = "http://localhost:3500"
+  url                 = "https://${var.nginx_ingress_fqdn}"
 
-  description = "Dapr sidecar for service invocation"
+  description = "nginx-ingress in AKS with Dapr sidecar (app-id: api-gateway)"
+
+  # Let's Encrypt certs are trusted by Azure. No need to disable TLS validation.
+  # If using self-signed certs, add: tls { validate_certificate_chain = false; validate_certificate_name = false }
 }
 
 # API Policies
@@ -68,6 +63,8 @@ resource "azurerm_api_management_api_policy" "catalog" {
   resource_group_name = data.azurerm_resource_group.rg.name
 
   xml_content = file("${path.module}/../policies/catalog-policy.xml")
+
+  depends_on = [azurerm_api_management_backend.nginx_ingress]
 }
 
 resource "azurerm_api_management_api_policy" "orders" {
@@ -76,6 +73,8 @@ resource "azurerm_api_management_api_policy" "orders" {
   resource_group_name = data.azurerm_resource_group.rg.name
 
   xml_content = file("${path.module}/../policies/orders-policy.xml")
+
+  depends_on = [azurerm_api_management_backend.nginx_ingress]
 }
 
 # Product (subscription) for Orders API

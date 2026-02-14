@@ -11,7 +11,8 @@ resource "azurerm_api_management" "apim" {
   publisher_name      = var.apim_publisher_name
   publisher_email     = var.apim_publisher_email
 
-  # Developer SKU required for self-hosted gateway (Consumption doesn't support it)
+  # Developer SKU - full policy support including built-in cache.
+  # Consumption SKU also works (no self-hosted gateway needed) but lacks built-in cache.
   sku_name = "Developer_1"
 
   identity {
@@ -19,16 +20,4 @@ resource "azurerm_api_management" "apim" {
   }
 
   tags = var.tags
-}
-
-# Self-Hosted Gateway
-resource "azurerm_api_management_gateway" "self_hosted" {
-  name              = var.gateway_name
-  api_management_id = azurerm_api_management.apim.id
-  description       = "Self-hosted gateway in AKS with Dapr sidecar"
-
-  location_data {
-    name   = "AKS Cluster"
-    region = var.location
-  }
 }

@@ -15,11 +15,20 @@
             <vary-by-header>Accept</vary-by-header>
         </cache-lookup>
 
-        <!-- Route to catalog-service via Dapr sidecar -->
-        <set-backend-service base-url="http://localhost:3500/v1.0/invoke/catalog-service/method" />
+        <!-- Route through nginx-ingress in AKS, which uses Dapr for service invocation.
+             APIM cloud gateway has no Dapr sidecar, so it routes to nginx-ingress
+             (app-id: api-gateway) which forwards via Dapr mTLS to catalog-service. -->
+        <set-backend-service backend-id="nginx-ingress-backend" />
 
-        <!-- Rewrite path: /api/v1/catalog -> /products -->
-        <rewrite-uri template="/products{context.Request.Url.Path.Replace(&quot;/api/v1/catalog&quot;, &quot;&quot;)}" />
+        <!-- Rewrite path: /api/v1/catalog{suffix} -> /apim/v1.0/invoke/catalog-service/method/products{suffix}
+             Uses OriginalUrl.Path because Url.Path is null after set-backend-service.
+             The /apim prefix is stripped by nginx-ingress rewrite-target annotation. -->
+        <rewrite-uri template="@{
+            var path = context.Request.OriginalUrl.Path;
+            var basePath = "/api/v1/catalog";
+            var suffix = path.Length > basePath.Length ? path.Substring(basePath.Length) : "";
+            return "/apim/v1.0/invoke/catalog-service/method/products" + suffix;
+        }" />
     </inbound>
     <backend>
         <base />

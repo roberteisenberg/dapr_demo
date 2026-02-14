@@ -20,7 +20,7 @@ log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Default values
-RESOURCE_GROUP="${RESOURCE_GROUP:-dapr-demo-rg}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-rg-dapr-demo}"
 APIM_NAME="${APIM_NAME:-}"
 
 # Parse arguments
@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --resource-group NAME  Azure resource group (default: dapr-demo-rg)"
+            echo "  --resource-group NAME  Azure resource group (default: rg-dapr-demo)"
             echo "  --apim-name NAME       APIM instance name (required)"
             echo ""
             exit 0
@@ -171,31 +171,6 @@ import_orders_api() {
     log_success "Orders API imported"
 }
 
-# Associate APIs with self-hosted gateway
-associate_gateway() {
-    log_info "Associating APIs with self-hosted gateway..."
-
-    GATEWAY_NAME="dapr-gateway"
-
-    # Associate catalog API
-    az apim gateway api create \
-        --resource-group "$RESOURCE_GROUP" \
-        --service-name "$APIM_NAME" \
-        --gateway-id "$GATEWAY_NAME" \
-        --api-id "catalog-api" \
-        --output none 2>/dev/null || log_warning "Catalog API already associated"
-
-    # Associate orders API
-    az apim gateway api create \
-        --resource-group "$RESOURCE_GROUP" \
-        --service-name "$APIM_NAME" \
-        --gateway-id "$GATEWAY_NAME" \
-        --api-id "orders-api" \
-        --output none 2>/dev/null || log_warning "Orders API already associated"
-
-    log_success "APIs associated with gateway"
-}
-
 # Create product and subscription for Orders API
 create_subscription() {
     log_info "Creating subscription for Orders API..."
@@ -257,7 +232,6 @@ main() {
     apply_global_policy
     import_catalog_api
     import_orders_api
-    associate_gateway
     create_subscription
 
     echo ""

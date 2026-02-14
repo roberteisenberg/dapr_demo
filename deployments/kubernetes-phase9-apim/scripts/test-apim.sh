@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Test Azure API Management Self-Hosted Gateway
+# Test Azure API Management Cloud Gateway
 # Verifies API routing, rate limiting, caching, and authentication
+# APIM cloud gateway routes through nginx-ingress → Dapr → backend services
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -43,8 +44,8 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options]"
             echo ""
             echo "Options:"
-            echo "  --gateway-url URL       APIM gateway URL (auto-detected from LoadBalancer)"
-            echo "  --subscription-key KEY  Subscription key for Orders API"
+            echo "  --gateway-url URL       APIM cloud gateway URL (auto-detected from terraform)"
+            echo "  --subscription-key KEY  Subscription key for Orders API (auto-detected from terraform)"
             echo "  --verbose               Show response bodies"
             echo ""
             exit 0
@@ -59,20 +60,37 @@ done
 PASSED=0
 FAILED=0
 
-# Auto-detect gateway URL from LoadBalancer service
+# Auto-detect gateway URL from Terraform output
 detect_gateway_url() {
     if [[ -z "$GATEWAY_URL" ]]; then
-        log_info "Detecting gateway URL from LoadBalancer service..."
+        log_info "Detecting APIM cloud gateway URL..."
 
-        GATEWAY_IP=$(kubectl get svc apim-gateway -n apim-gateway \
-            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+        if [[ -d "$PROJECT_ROOT/terraform" ]]; then
+            GATEWAY_URL=$(cd "$PROJECT_ROOT/terraform" && terraform output -raw apim_gateway_url 2>/dev/null || echo "")
+        fi
 
-        if [[ -n "$GATEWAY_IP" ]]; then
-            GATEWAY_URL="http://$GATEWAY_IP"
+        if [[ -n "$GATEWAY_URL" ]]; then
             log_info "Using gateway URL: $GATEWAY_URL"
         else
-            log_error "Could not detect gateway URL. Use --gateway-url option"
+            log_error "Could not detect gateway URL. Use --gateway-url or run terraform apply"
             exit 1
+        fi
+    fi
+}
+
+# Auto-detect subscription key from Terraform output
+detect_subscription_key() {
+    if [[ -z "$SUBSCRIPTION_KEY" ]]; then
+        log_info "Detecting subscription key..."
+
+        if [[ -d "$PROJECT_ROOT/terraform" ]]; then
+            SUBSCRIPTION_KEY=$(cd "$PROJECT_ROOT/terraform" && terraform output -raw subscription_primary_key 2>/dev/null || echo "")
+        fi
+
+        if [[ -n "$SUBSCRIPTION_KEY" ]]; then
+            log_info "Subscription key detected from terraform"
+        else
+            log_warning "Could not detect subscription key. Use --subscription-key for Orders API tests"
         fi
     fi
 }
@@ -118,33 +136,53 @@ run_test() {
     fi
 }
 
-# Test gateway health
-test_gateway_health() {
+# Test infrastructure health
+test_infrastructure_health() {
     echo ""
-    echo "=== Gateway Health ==="
+    echo "=== Infrastructure Health ==="
 
-    # Check gateway pods
-    READY=$(kubectl get pods -n apim-gateway -l app=apim-gateway \
-        -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -c True || echo 0)
+    # Check APIM cloud gateway is reachable
+    log_info "Checking APIM cloud gateway reachability..."
+    APIM_CODE=$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY_URL/status-0123456789abcdef" 2>/dev/null || echo "000")
 
-    if [[ "$READY" -ge 1 ]]; then
-        log_success "Gateway pods running: $READY"
+    if [[ "$APIM_CODE" != "000" ]]; then
+        log_success "APIM cloud gateway reachable (HTTP $APIM_CODE)"
         ((PASSED++))
     else
-        log_error "No ready gateway pods"
+        log_error "APIM cloud gateway not reachable at $GATEWAY_URL"
         ((FAILED++))
     fi
 
-    # Check Dapr sidecars
-    DAPR_READY=$(kubectl get pods -n apim-gateway -l app=apim-gateway \
-        -o jsonpath='{.items[*].status.containerStatuses[?(@.name=="daprd")].ready}' 2>/dev/null | grep -c true || echo 0)
+    # Check nginx-ingress pods in AKS
+    NGINX_READY=$(kubectl get pods -n dapr-demo -l app.kubernetes.io/name=ingress-nginx \
+        -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -c True || echo 0)
 
-    if [[ "$DAPR_READY" -ge 1 ]]; then
-        log_success "Dapr sidecars running: $DAPR_READY"
+    if [[ "$NGINX_READY" -ge 1 ]]; then
+        log_success "nginx-ingress pods running: $NGINX_READY"
         ((PASSED++))
     else
-        log_error "No ready Dapr sidecars"
+        log_error "No ready nginx-ingress pods"
         ((FAILED++))
+    fi
+
+    # Check APIM ingress exists
+    if kubectl get ingress dapr-demo-ingress-apim -n dapr-demo &> /dev/null; then
+        log_success "APIM ingress rule exists"
+        ((PASSED++))
+    else
+        log_error "APIM ingress rule not found. Run deploy-apim-ingress.sh"
+        ((FAILED++))
+    fi
+
+    # Check backend services
+    BACKEND_READY=$(kubectl get pods -n dapr-demo -l "app in (catalog-service,order-service,workflow-service)" \
+        -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -c True || echo 0)
+
+    if [[ "$BACKEND_READY" -ge 3 ]]; then
+        log_success "Backend service pods running: $BACKEND_READY"
+        ((PASSED++))
+    else
+        log_warning "Only $BACKEND_READY backend pods ready (expected 3+)"
     fi
 }
 
@@ -283,12 +321,13 @@ print_summary() {
 main() {
     echo ""
     echo "=========================================="
-    echo "APIM Gateway Test Suite"
+    echo "APIM Cloud Gateway Test Suite"
     echo "=========================================="
 
     detect_gateway_url
+    detect_subscription_key
 
-    test_gateway_health
+    test_infrastructure_health
     test_catalog_api
     test_orders_api
     test_rate_limiting

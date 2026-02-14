@@ -30,26 +30,29 @@
             </when>
         </choose>
 
-        <!-- Route based on operation -->
+        <!-- Route through nginx-ingress in AKS (APIM cloud gateway has no Dapr sidecar).
+             The /apim prefix is stripped by nginx-ingress rewrite-target annotation,
+             so Dapr receives standard /v1.0/invoke/{service}/method/{endpoint} URLs. -->
+        <set-backend-service backend-id="nginx-ingress-backend" />
+
+        <!-- Route based on operation.
+             Uses OriginalUrl.Path because Url.Path is null after set-backend-service. -->
         <choose>
             <when condition="@(context.Request.Method == &quot;POST&quot;)">
                 <!-- POST /orders -> workflow-service /workflows/order -->
-                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/workflow-service/method" />
-                <rewrite-uri template="/workflows/order" />
+                <rewrite-uri template="/apim/v1.0/invoke/workflow-service/method/workflows/order" />
             </when>
-            <when condition="@(context.Request.Url.Path.Contains(&quot;/&quot;) &amp;&amp; context.Request.Method == &quot;GET&quot;)">
+            <when condition="@(context.Request.OriginalUrl.Path.Length > &quot;/api/v1/orders&quot;.Length &amp;&amp; context.Request.Method == &quot;GET&quot;)">
                 <!-- GET /orders/{id} -> workflow-service /workflows/{id} -->
-                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/workflow-service/method" />
                 <rewrite-uri template="@{
-                    var path = context.Request.Url.Path;
+                    var path = context.Request.OriginalUrl.Path;
                     var orderId = path.Substring(path.LastIndexOf('/') + 1);
-                    return &quot;/workflows/&quot; + orderId;
+                    return &quot;/apim/v1.0/invoke/workflow-service/method/workflows/&quot; + orderId;
                 }" />
             </when>
             <otherwise>
                 <!-- GET /orders -> order-service /orders -->
-                <set-backend-service base-url="http://localhost:3500/v1.0/invoke/order-service/method" />
-                <rewrite-uri template="/orders" />
+                <rewrite-uri template="/apim/v1.0/invoke/order-service/method/orders" />
             </otherwise>
         </choose>
     </inbound>
