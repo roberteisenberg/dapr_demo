@@ -24,7 +24,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 7-A | AI Fraud Check in Order Workflow | Available |
 | 8 | End-to-end Security | Available |
 | 9 | API Management | Available |
-| 10 | CI/CD + Developer Experience | Planned |
+| 10 | CI/CD + Developer Experience | Available |
 | 11 | Resilience | Planned |
 | 12 | Actors | Planned |
 | 13 | Runtime Flexibility | Planned |
@@ -225,16 +225,13 @@ End-to-end security layered onto the AKS deployment. Five security layers: TLS v
 
 ## Phase 9: API Management
 
-Add Azure API Management (APIM) with a self-hosted gateway to the AKS deployment. The gateway runs inside the cluster with a Dapr sidecar, using Dapr service invocation to route requests to backend services.
+Add Azure API Management (APIM) to the AKS deployment. APIM's cloud gateway applies enterprise policies (caching, rate limiting, subscriptions, validation), then routes through nginx-ingress to reach backend services via Dapr service invocation.
 
 **What you'll learn:**
-- Azure APIM self-hosted gateway with Dapr sidecar
+- APIM cloud gateway routing through nginx-ingress (Developer SKU cost-effective pattern)
 - Response caching, rate limiting, request validation via APIM policies
 - API versioning and subscription keys
-- Dapr service invocation from APIM (`set-backend-service` with `dapr-app-id`)
-- Extending an existing deployment without rebuilding
-
-**Alternative discussed:** Envoy Gateway implements the Kubernetes Gateway API (the direction K8s is heading) and offers richer L7 observability, native gRPC, and traffic management. However, NGINX is simpler for a demo, and Envoy overlaps significantly with APIM's features without replacing its management plane (developer portal, subscriptions, analytics).
+- Extending an existing deployment without rebuilding — layer APIM onto a running system
 
 **Location**: [deployments/kubernetes-phase9-apim/](deployments/kubernetes-phase9-apim/)
 
@@ -242,13 +239,15 @@ Add Azure API Management (APIM) with a self-hosted gateway to the AKS deployment
 
 ## Phase 10: CI/CD + Developer Experience
 
-GitHub Actions pipelines for automated build, test, and deployment. Plus VS Code debugging configuration for developing services with Dapr sidecars.
+GitHub Actions pipeline for automated build, deploy, and smoke test. VS Code debugging configuration for developing services locally with Dapr sidecars.
 
 **What you'll learn:**
-- GitHub Actions for CI/CD with Dapr microservices
-- Automated image builds, testing, and deployment to AKS
-- Multi-container debugging in VS Code with Dapr sidecars (`.vscode/launch.json`)
-- Pipeline evolution as new phases are added
+- GitHub Actions CI/CD — matrix build (5 services in parallel), deploy to AKS, smoke test through APIM
+- VS Code debug configs with automatic Dapr sidecar startup (`daprd` as pre-launch tasks)
+- Path-filtered triggers (only service code changes trigger builds)
+- Compound debugging (all 4 backend services + Dapr sidecars simultaneously)
+
+**Location**: [deployments/kubernetes-phase10-cicd/](deployments/kubernetes-phase10-cicd/) + [.github/workflows/](.github/workflows/) + [.vscode/](.vscode/)
 
 ---
 
@@ -333,6 +332,12 @@ Additional services added in later phases:
 dapr_demo/
 ├── README.md
 ├── ROADMAP.md
+├── .github/workflows/             # Phase 10: CI/CD pipeline
+│   └── deploy.yml
+├── .vscode/                       # Phase 10: Debug configs
+│   ├── launch.json
+│   ├── tasks.json
+│   └── extensions.json
 ├── services/                      # Shared (Docker & Kubernetes)
 │   ├── catalog-service/           # Go + Dockerfile
 │   ├── order-service/             # Python + Dockerfile
@@ -358,10 +363,15 @@ dapr_demo/
     │   ├── manifests/             # + OAuth2 Proxy, TLS ingress
     │   ├── config/                # ingress-values.yaml
     │   └── scripts/               # + setup with cert-manager & Azure AD
-    └── kubernetes-phase9-apim/
-        ├── terraform/             # APIM instance + self-hosted gateway
-        ├── k8s/                   # Gateway deployment with Dapr
-        ├── policies/              # APIM policies (caching, rate limiting)
-        ├── api-definitions/       # OpenAPI specs
+    ├── kubernetes-phase9-apim/
+    │   ├── terraform/             # APIM instance (Developer SKU)
+    │   ├── k8s/                   # APIM ingress rule
+    │   ├── policies/              # APIM policies (caching, rate limiting)
+    │   ├── api-definitions/       # OpenAPI specs
+    │   └── scripts/
+    └── kubernetes-phase10-cicd/
+        ├── README.md              # CI/CD documentation
+        ├── ARCHITECTURE.md        # Architecture details
         └── scripts/
+            └── smoke-test-apim.sh # Pipeline smoke test
 ```

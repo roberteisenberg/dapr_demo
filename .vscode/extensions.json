@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "golang.go",
+    "ms-python.python",
+    "ms-dotnettools.csdevkit",
+    "ms-azuretools.vscode-docker",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "redhat.vscode-yaml",
+    "hashicorp.terraform",
+    "dbaeumer.vscode-eslint"
+  ]
+}

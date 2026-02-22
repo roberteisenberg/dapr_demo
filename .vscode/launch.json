@@ -1,0 +1,71 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Catalog Service (Go)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/services/catalog-service/main.go",
+      "env": {
+        "DAPR_HTTP_PORT": "3500",
+        "DAPR_GRPC_PORT": "50001"
+      },
+      "preLaunchTask": "start-dapr-catalog",
+      "postDebugTask": "stop-all-dapr"
+    },
+    {
+      "name": "Debug Order Service (Python)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/order-service/app.py",
+      "cwd": "${workspaceFolder}/services/order-service",
+      "env": {
+        "DAPR_HTTP_PORT": "3501",
+        "DAPR_GRPC_PORT": "50002"
+      },
+      "preLaunchTask": "start-dapr-order",
+      "postDebugTask": "stop-all-dapr"
+    },
+    {
+      "name": "Debug Notification Service (Node.js)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/notification-service/index.js",
+      "cwd": "${workspaceFolder}/services/notification-service",
+      "env": {
+        "PORT": "8082",
+        "DAPR_HTTP_PORT": "3502",
+        "DAPR_GRPC_PORT": "50003"
+      },
+      "preLaunchTask": "start-dapr-notification",
+      "postDebugTask": "stop-all-dapr"
+    },
+    {
+      "name": "Debug Workflow Service (.NET)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/services/workflow-service/bin/Debug/net8.0/WorkflowService.dll",
+      "cwd": "${workspaceFolder}/services/workflow-service",
+      "env": {
+        "ASPNETCORE_URLS": "http://+:8083",
+        "DAPR_HTTP_PORT": "3503",
+        "DAPR_GRPC_PORT": "50004"
+      },
+      "preLaunchTask": "build-workflow-service",
+      "postDebugTask": "stop-all-dapr"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug All Services",
+      "configurations": [
+        "Debug Catalog Service (Go)",
+        "Debug Order Service (Python)",
+        "Debug Notification Service (Node.js)",
+        "Debug Workflow Service (.NET)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

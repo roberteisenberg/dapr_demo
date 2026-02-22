@@ -1,0 +1,107 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start-dapr-catalog",
+      "type": "shell",
+      "command": "daprd",
+      "args": [
+        "--app-id", "catalog-service",
+        "--app-port", "8080",
+        "--dapr-http-port", "3500",
+        "--dapr-grpc-port", "50001",
+        "--resources-path", "${workspaceFolder}/deployments/local/components"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*starting Dapr Runtime.*",
+          "endsPattern": ".*dapr initialized.*"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "group": "dapr" }
+    },
+    {
+      "label": "start-dapr-order",
+      "type": "shell",
+      "command": "daprd",
+      "args": [
+        "--app-id", "order-service",
+        "--app-port", "8081",
+        "--dapr-http-port", "3501",
+        "--dapr-grpc-port", "50002",
+        "--resources-path", "${workspaceFolder}/deployments/local/components"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*starting Dapr Runtime.*",
+          "endsPattern": ".*dapr initialized.*"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "group": "dapr" }
+    },
+    {
+      "label": "start-dapr-notification",
+      "type": "shell",
+      "command": "daprd",
+      "args": [
+        "--app-id", "notification-service",
+        "--app-port", "8082",
+        "--dapr-http-port", "3502",
+        "--dapr-grpc-port", "50003",
+        "--resources-path", "${workspaceFolder}/deployments/local/components"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*starting Dapr Runtime.*",
+          "endsPattern": ".*dapr initialized.*"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "group": "dapr" }
+    },
+    {
+      "label": "start-dapr-workflow",
+      "type": "shell",
+      "command": "daprd",
+      "args": [
+        "--app-id", "workflow-service",
+        "--app-port", "8083",
+        "--dapr-http-port", "3503",
+        "--dapr-grpc-port", "50004",
+        "--resources-path", "${workspaceFolder}/deployments/local/components"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*starting Dapr Runtime.*",
+          "endsPattern": ".*dapr initialized.*"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "dedicated", "group": "dapr" }
+    },
+    {
+      "label": "stop-all-dapr",
+      "type": "shell",
+      "command": "pkill -f daprd || true",
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "build-workflow-service",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/services/workflow-service/WorkflowService.csproj"],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

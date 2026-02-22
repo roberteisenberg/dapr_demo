@@ -1,0 +1,92 @@
+name: Build & Deploy to AKS
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.service.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: catalog-service
+            context: services/catalog-service
+            image: dapr-catalog-service
+          - name: order-service
+            context: services/order-service
+            image: dapr-order-service
+          - name: notification-service
+            context: services/notification-service
+            image: dapr-notification-service
+          - name: workflow-service
+            context: services/workflow-service
+            image: dapr-workflow-service
+          - name: web-app
+            context: frontend/web-app
+            image: dapr-web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service.image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to AKS
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get AKS credentials
+        run: az aks get-credentials --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} --cluster-name ${{ secrets.AKS_CLUSTER_NAME }}
+
+      - name: Restart deployments
+        run: |
+          kubectl rollout restart deployment/catalog-service -n dapr-demo
+          kubectl rollout restart deployment/order-service -n dapr-demo
+          kubectl rollout restart deployment/notification-service -n dapr-demo
+          kubectl rollout restart deployment/workflow-service -n dapr-demo
+          kubectl rollout restart deployment/web-app -n dapr-demo
+
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/catalog-service -n dapr-demo --timeout=5m
+          kubectl rollout status deployment/order-service -n dapr-demo --timeout=5m
+          kubectl rollout status deployment/notification-service -n dapr-demo --timeout=5m
+          kubectl rollout status deployment/workflow-service -n dapr-demo --timeout=5m
+          kubectl rollout status deployment/web-app -n dapr-demo --timeout=5m
+
+  smoke-test:
+    name: Smoke Test
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run APIM smoke tests
+        env:
+          GATEWAY_URL: ${{ secrets.APIM_GATEWAY_URL }}
+        run: bash deployments/kubernetes-phase10-cicd/scripts/smoke-test-apim.sh
