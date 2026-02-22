@@ -1,20 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	dapr "github.com/dapr/go-sdk/client"
-	"github.com/gorilla/mux"
+	daprd "github.com/dapr/go-sdk/service/http"
 )
 
 const (
 	stateStoreName  = "statestore"
 	productIndexKey = "product-index"
-	port            = "8080"
+	port            = ":8080"
 )
 
 type Product struct {
@@ -51,21 +55,24 @@ func main() {
 
 	log.Println("Dapr client initialized successfully")
 
-	// Setup HTTP router
-	r := mux.NewRouter()
+	// Setup chi router with product CRUD endpoints
+	r := chi.NewRouter()
 
-	// Product endpoints
-	r.HandleFunc("/products", getProducts).Methods("GET")
-	r.HandleFunc("/products/{id}", getProduct).Methods("GET")
-	r.HandleFunc("/products", createProduct).Methods("POST")
-	r.HandleFunc("/products/{id}", updateProduct).Methods("PUT")
-	r.HandleFunc("/products/{id}", deleteProduct).Methods("DELETE")
+	r.Get("/products", getProducts)
+	r.Get("/products/{id}", getProduct)
+	r.Post("/products", createProduct)
+	r.Put("/products/{id}", updateProduct)
+	r.Delete("/products/{id}", deleteProduct)
+	r.Get("/health", healthCheck)
 
-	// Health check
-	r.HandleFunc("/health", healthCheck).Methods("GET")
+	// Create Dapr HTTP service with our chi router (required for actor support)
+	s := daprd.NewServiceWithMux(port, r)
+
+	// Register the ProductActor (Phase 12)
+	s.RegisterActorImplFactoryContext(ProductActorFactory)
 
 	log.Printf("Catalog Service listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	if err := s.Start(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
@@ -119,8 +126,7 @@ func getProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func getProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	productID := vars["id"]
+	productID := chi.URLParam(r, "id")
 
 	ctx := context.Background()
 
@@ -181,6 +187,11 @@ func createProduct(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error updating product index: %v", err)
 	}
 
+	// Initialize actor stock (Phase 12)
+	if err := syncActorStock(product.ID, product.Stock); err != nil {
+		log.Printf("Warning: failed to sync actor stock for %s: %v", product.ID, err)
+	}
+
 	log.Printf("Product created: %s", product.ID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -188,8 +199,7 @@ func createProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	productID := vars["id"]
+	productID := chi.URLParam(r, "id")
 
 	var product Product
 	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
@@ -214,14 +224,18 @@ func updateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sync actor stock (Phase 12)
+	if err := syncActorStock(product.ID, product.Stock); err != nil {
+		log.Printf("Warning: failed to sync actor stock for %s: %v", product.ID, err)
+	}
+
 	log.Printf("Product updated: %s", product.ID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(product)
 }
 
 func deleteProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	productID := vars["id"]
+	productID := chi.URLParam(r, "id")
 
 	ctx := context.Background()
 
@@ -296,4 +310,33 @@ func removeFromProductIndex(ctx context.Context, productID string) error {
 	}
 
 	return daprClient.SaveState(ctx, stateStoreName, productIndexKey, indexJSON, nil)
+}
+
+// syncActorStock initializes the ProductActor's stock state via the Dapr sidecar HTTP API.
+// This keeps actor stock in sync when products are created or updated through the REST API.
+func syncActorStock(productID string, stock int) error {
+	payload, err := json.Marshal(StockResponse{Stock: stock})
+	if err != nil {
+		return fmt.Errorf("marshal stock: %w", err)
+	}
+
+	url := fmt.Sprintf("http://localhost:3500/v1.0/actors/%s/%s/method/InitStock", actorType, productID)
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(payload))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("invoke actor: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("actor returned status %d", resp.StatusCode)
+	}
+
+	log.Printf("Actor stock synced for product %s: %d", productID, stock)
+	return nil
 }

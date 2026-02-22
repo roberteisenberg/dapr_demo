@@ -104,3 +104,25 @@ public record NotificationRequest(
     decimal TotalAmount,
     string Status
 );
+
+// --- Actor invocation models (Phase 12) ---
+
+/// <summary>
+/// Request to reserve stock via ProductActor
+/// </summary>
+public record ActorReserveRequest(int Quantity);
+
+/// <summary>
+/// Response from ProductActor.Reserve
+/// </summary>
+public record ActorReserveResponse(bool Success, string Message, int RemainingStock);
+
+/// <summary>
+/// Request to release stock via ProductActor (compensation)
+/// </summary>
+public record ActorReleaseRequest(int Quantity);
+
+/// <summary>
+/// Response from ProductActor.Release
+/// </summary>
+public record ActorReleaseResponse(bool Success, string Message, int RemainingStock);

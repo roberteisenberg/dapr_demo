@@ -1,20 +1,20 @@
-using Dapr.Client;
+using Dapr.Actors;
+using Dapr.Actors.Client;
 using Dapr.Workflow;
 using WorkflowService.Models;
 
 namespace WorkflowService.Activities;
 
 /// <summary>
-/// Compensation activity: releases reserved inventory by incrementing stock
+/// Compensation activity: releases reserved inventory via the ProductActor (Phase 12).
+/// Called when fraud check fails or payment processing fails.
 /// </summary>
 public class ReleaseInventoryActivity : WorkflowActivity<InventoryReservation, bool>
 {
-    private readonly DaprClient _daprClient;
     private readonly ILogger<ReleaseInventoryActivity> _logger;
 
-    public ReleaseInventoryActivity(DaprClient daprClient, ILogger<ReleaseInventoryActivity> logger)
+    public ReleaseInventoryActivity(ILogger<ReleaseInventoryActivity> logger)
     {
-        _daprClient = daprClient;
         _logger = logger;
     }
 
@@ -25,28 +25,22 @@ public class ReleaseInventoryActivity : WorkflowActivity<InventoryReservation, b
 
         try
         {
-            // Get current product state
-            var product = await _daprClient.InvokeMethodAsync<Product>(
-                HttpMethod.Get,
-                "catalog-service",
-                $"products/{input.ProductId}");
+            // Release stock via ProductActor
+            var actorId = new ActorId(input.ProductId);
+            var proxy = ActorProxy.Create(actorId, "ProductActorType");
+            var result = await proxy.InvokeMethodAsync<ActorReleaseRequest, ActorReleaseResponse>(
+                "Release",
+                new ActorReleaseRequest(input.Quantity));
 
-            if (product == null)
+            if (!result.Success)
             {
-                _logger.LogError("Cannot release inventory: Product {ProductId} not found", input.ProductId);
+                _logger.LogError("COMPENSATION FAILED: Actor release failed for {ProductId}: {Message}",
+                    input.ProductId, result.Message);
                 return false;
             }
 
-            // Restore stock (release reservation)
-            var updatedProduct = product with { Stock = product.Stock + input.Quantity };
-            await _daprClient.InvokeMethodAsync(
-                HttpMethod.Put,
-                "catalog-service",
-                $"products/{input.ProductId}",
-                updatedProduct);
-
-            _logger.LogInformation("COMPENSATION COMPLETE: Released {Quantity}x {ProductId}. Stock: {OldStock} -> {NewStock}",
-                input.Quantity, input.ProductId, product.Stock, updatedProduct.Stock);
+            _logger.LogInformation("COMPENSATION COMPLETE: Released {Quantity}x {ProductId} via actor. Stock now: {Stock}",
+                input.Quantity, input.ProductId, result.RemainingStock);
 
             return true;
         }

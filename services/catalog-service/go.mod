@@ -6,7 +6,7 @@ toolchain go1.24.11
 
 require (
 	github.com/dapr/go-sdk v1.10.1
-	github.com/gorilla/mux v1.8.1
+	github.com/go-chi/chi/v5 v5.0.12
 )
 
 require (

@@ -26,7 +26,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 9 | API Management | Available |
 | 10 | CI/CD + Developer Experience | Available |
 | 11 | Resilience | Available |
-| 12 | Actors | Planned |
+| 12 | Actors | Available |
 | 13 | Runtime Flexibility | Planned |
 | 14 | Multi-Cloud Integration | Planned |
 | 15 | Cloud Portability | Planned |
@@ -268,12 +268,15 @@ Production-harden the application with Dapr resiliency policies, pub/sub dead le
 
 ## Phase 12: Actors
 
-Replace direct state store operations for inventory with Dapr virtual actors. Each product becomes an actor managing its own stock, eliminating concurrency issues with competing orders.
+Replace direct state store operations for inventory with Dapr virtual actors. Each product becomes a `ProductActor` in catalog-service (Go) that manages its own stock with turn-based concurrency — no more race conditions between competing orders.
 
 **What you'll learn:**
-- Dapr virtual actor pattern for stateful, concurrent entities
-- Actor-based inventory management (turn-based access eliminates race conditions)
-- The same actor model that powers Dapr Workflow internally and Dapr Agents' `DurableAgent` for scalable AI
+- Dapr virtual actor pattern for stateful, concurrent entities (ProductActor with Reserve/Release/GetStock)
+- Turn-based access eliminates race conditions without distributed locks
+- Cross-language actor invocation (.NET workflow-service → Go catalog-service via placement service)
+- Go Dapr actor SDK with chi router (production-ready since v1.5)
+
+**Location**: [deployments/kubernetes-phase12-actors/](deployments/kubernetes-phase12-actors/)
 
 ---
 
@@ -376,17 +379,24 @@ dapr_demo/
     │   ├── ARCHITECTURE.md        # Architecture details
     │   └── scripts/
     │       └── smoke-test-apim.sh # Pipeline smoke test
-    └── kubernetes-phase11-resilience/
-        ├── README.md              # Resilience documentation
+    ├── kubernetes-phase11-resilience/
+    │   ├── README.md              # Resilience documentation
+    │   ├── ARCHITECTURE.md        # Architecture details
+    │   ├── manifests/
+    │   │   ├── resiliency.yaml    # Dapr Resiliency CRD
+    │   │   ├── hpa.yaml           # Horizontal Pod Autoscalers
+    │   │   └── tracing.yaml       # Updated access control
+    │   └── scripts/
+    │       ├── deploy-resilience.sh
+    │       ├── test-resilience.sh
+    │       ├── demo-circuit-breaker.sh
+    │       ├── demo-dead-letter.sh
+    │       └── demo-hpa-load.sh
+    └── kubernetes-phase12-actors/
+        ├── README.md              # Actors documentation
         ├── ARCHITECTURE.md        # Architecture details
-        ├── manifests/
-        │   ├── resiliency.yaml    # Dapr Resiliency CRD
-        │   ├── hpa.yaml           # Horizontal Pod Autoscalers
-        │   └── tracing.yaml       # Updated access control
         └── scripts/
-            ├── deploy-resilience.sh
-            ├── test-resilience.sh
-            ├── demo-circuit-breaker.sh
-            ├── demo-dead-letter.sh
-            └── demo-hpa-load.sh
+            ├── deploy-actors.sh
+            ├── test-actors.sh
+            └── demo-actor-concurrency.sh
 ```

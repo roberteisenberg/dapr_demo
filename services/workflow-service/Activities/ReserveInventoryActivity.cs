@@ -1,3 +1,5 @@
+using Dapr.Actors;
+using Dapr.Actors.Client;
 using Dapr.Client;
 using Dapr.Workflow;
 using WorkflowService.Models;
@@ -5,7 +7,9 @@ using WorkflowService.Models;
 namespace WorkflowService.Activities;
 
 /// <summary>
-/// Reserves inventory by decrementing stock in catalog-service
+/// Reserves inventory via the ProductActor (Phase 12).
+/// Product metadata (name, price, category) is fetched via regular HTTP invocation.
+/// Stock reservation uses the actor for turn-based concurrency — no race conditions.
 /// </summary>
 public class ReserveInventoryActivity : WorkflowActivity<OrderRequest, InventoryReservation>
 {
@@ -25,7 +29,7 @@ public class ReserveInventoryActivity : WorkflowActivity<OrderRequest, Inventory
 
         try
         {
-            // Get product from catalog-service
+            // Step 1: Get product metadata from catalog-service (regular HTTP)
             var product = await _daprClient.InvokeMethodAsync<Product>(
                 HttpMethod.Get,
                 "catalog-service",
@@ -42,29 +46,27 @@ public class ReserveInventoryActivity : WorkflowActivity<OrderRequest, Inventory
                     Message: $"Product {input.ProductId} not found");
             }
 
-            // Check stock availability
-            if (product.Stock < input.Quantity)
+            // Step 2: Reserve stock via ProductActor (turn-based concurrency)
+            var actorId = new ActorId(input.ProductId);
+            var proxy = ActorProxy.Create(actorId, "ProductActorType");
+            var reservation = await proxy.InvokeMethodAsync<ActorReserveRequest, ActorReserveResponse>(
+                "Reserve",
+                new ActorReserveRequest(input.Quantity));
+
+            if (!reservation.Success)
             {
-                _logger.LogWarning("Insufficient stock for {ProductId}: available={Stock}, requested={Quantity}",
-                    input.ProductId, product.Stock, input.Quantity);
+                _logger.LogWarning("Actor reservation failed for {ProductId}: {Message}",
+                    input.ProductId, reservation.Message);
                 return new InventoryReservation(
                     input.OrderId,
                     input.ProductId,
                     input.Quantity,
                     Success: false,
-                    Message: $"Insufficient stock: available={product.Stock}, requested={input.Quantity}");
+                    Message: reservation.Message);
             }
 
-            // Update stock (reserve inventory)
-            var updatedProduct = product with { Stock = product.Stock - input.Quantity };
-            await _daprClient.InvokeMethodAsync(
-                HttpMethod.Put,
-                "catalog-service",
-                $"products/{input.ProductId}",
-                updatedProduct);
-
-            _logger.LogInformation("Reserved {Quantity}x {ProductId} for order {OrderId}. Stock: {OldStock} -> {NewStock}",
-                input.Quantity, input.ProductId, input.OrderId, product.Stock, updatedProduct.Stock);
+            _logger.LogInformation("Reserved {Quantity}x {ProductId} for order {OrderId} via actor. Remaining stock: {Stock}",
+                input.Quantity, input.ProductId, input.OrderId, reservation.RemainingStock);
 
             return new InventoryReservation(
                 input.OrderId,
