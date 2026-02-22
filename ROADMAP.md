@@ -25,7 +25,7 @@ Each deployment type includes a sub-phase demonstrating **infrastructure portabi
 | 8 | End-to-end Security | Available |
 | 9 | API Management | Available |
 | 10 | CI/CD + Developer Experience | Available |
-| 11 | Resilience | Planned |
+| 11 | Resilience | Available |
 | 12 | Actors | Planned |
 | 13 | Runtime Flexibility | Planned |
 | 14 | Multi-Cloud Integration | Planned |
@@ -244,7 +244,7 @@ GitHub Actions pipeline for automated build, deploy, and smoke test. VS Code deb
 **What you'll learn:**
 - GitHub Actions CI/CD — matrix build (5 services in parallel), deploy to AKS, smoke test through APIM
 - VS Code debug configs with automatic Dapr sidecar startup (`daprd` as pre-launch tasks)
-- Path-filtered triggers (only service code changes trigger builds)
+- Manual dispatch triggers (deploy when you're ready, not on every push)
 - Compound debugging (all 4 backend services + Dapr sidecars simultaneously)
 
 **Location**: [deployments/kubernetes-phase10-cicd/](deployments/kubernetes-phase10-cicd/) + [.github/workflows/](.github/workflows/) + [.vscode/](.vscode/)
@@ -258,9 +258,11 @@ Production-harden the application with Dapr resiliency policies, pub/sub dead le
 **What you'll learn:**
 - Dapr resiliency policies — retries with exponential backoff, timeouts, circuit breakers (one YAML file, zero code changes)
 - Pub/sub dead letter topics — failed messages routed to a dead letter topic instead of lost
-- Horizontal Pod Autoscaler (HPA) with load testing (k6 or hey) and Zipkin visualization of scaling behavior
+- Horizontal Pod Autoscaler (HPA) with load testing (`hey`) and Zipkin visualization of scaling behavior
 
 **Demo walkthrough:** Kill a service → circuit breaker trips → retries succeed when it recovers. Poison a pub/sub message → dead letter catches it. Flood requests → pods scale up → traces stay healthy.
+
+**Location**: [deployments/kubernetes-phase11-resilience/](deployments/kubernetes-phase11-resilience/)
 
 ---
 
@@ -369,9 +371,22 @@ dapr_demo/
     │   ├── policies/              # APIM policies (caching, rate limiting)
     │   ├── api-definitions/       # OpenAPI specs
     │   └── scripts/
-    └── kubernetes-phase10-cicd/
-        ├── README.md              # CI/CD documentation
+    ├── kubernetes-phase10-cicd/
+    │   ├── README.md              # CI/CD documentation
+    │   ├── ARCHITECTURE.md        # Architecture details
+    │   └── scripts/
+    │       └── smoke-test-apim.sh # Pipeline smoke test
+    └── kubernetes-phase11-resilience/
+        ├── README.md              # Resilience documentation
         ├── ARCHITECTURE.md        # Architecture details
+        ├── manifests/
+        │   ├── resiliency.yaml    # Dapr Resiliency CRD
+        │   ├── hpa.yaml           # Horizontal Pod Autoscalers
+        │   └── tracing.yaml       # Updated access control
         └── scripts/
-            └── smoke-test-apim.sh # Pipeline smoke test
+            ├── deploy-resilience.sh
+            ├── test-resilience.sh
+            ├── demo-circuit-breaker.sh
+            ├── demo-dead-letter.sh
+            └── demo-hpa-load.sh
 ```

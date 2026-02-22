@@ -1,0 +1,69 @@
+# Phase 11: Dapr Resiliency Policy
+# Adds retries, timeouts, and circuit breakers to all service invocation and
+# component operations — zero code changes required.
+#
+# Docs: https://docs.dapr.io/operations/resiliency/
+apiVersion: dapr.io/v1alpha1
+kind: Resiliency
+metadata:
+  name: default-resilience
+  namespace: dapr-demo
+scopes:
+  - catalog-service
+  - order-service
+  - notification-service
+  - workflow-service
+spec:
+  policies:
+    retries:
+      # Service-to-service invocation (order->catalog, workflow->catalog/order)
+      serviceRetry:
+        policy: exponential
+        duration: 1s
+        maxInterval: 10s
+        maxRetries: 5
+
+      # State store operations (Redis reads/writes)
+      stateRetry:
+        policy: exponential
+        duration: 500ms
+        maxInterval: 10s
+        maxRetries: 3
+
+      # Pub/sub publish operations
+      pubsubRetry:
+        policy: constant
+        duration: 2s
+        maxRetries: 3
+
+    timeouts:
+      serviceTimeout: 10s
+      stateTimeout: 5s
+      pubsubTimeout: 10s
+
+    circuitBreakers:
+      serviceCB:
+        maxRequests: 1          # requests allowed in half-open state
+        timeout: 30s            # time in open state before half-open
+        trip: consecutiveFailures >= 3
+
+  targets:
+    apps:
+      catalog-service:
+        timeout: serviceTimeout
+        retry: serviceRetry
+        circuitBreaker: serviceCB
+      order-service:
+        timeout: serviceTimeout
+        retry: serviceRetry
+        circuitBreaker: serviceCB
+
+    components:
+      statestore:
+        outbound:
+          timeout: stateTimeout
+          retry: stateRetry
+      pubsub:
+        outbound:
+          timeout: pubsubTimeout
+          retry: pubsubRetry
