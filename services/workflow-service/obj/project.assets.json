@@ -18,6 +18,23 @@
           }
         }
       },
+      "Dapr.Actors/1.14.0": {
+        "type": "package",
+        "dependencies": {
+          "Dapr.Client": "1.14.0",
+          "Microsoft.Extensions.Logging.Abstractions": "3.1.0"
+        },
+        "compile": {
+          "lib/net8.0/Dapr.Actors.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Dapr.Actors.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Dapr.AspNetCore/1.14.0": {
         "type": "package",
         "dependencies": {
@@ -680,6 +697,22 @@
         "lib/netstandard2.1/Castle.Core.dll",
         "lib/netstandard2.1/Castle.Core.xml",
         "readme.txt"
+      ]
+    },
+    "Dapr.Actors/1.14.0": {
+      "sha512": "CUds5JTUGE8xJTcMw6fbSGbnJm7p7TNe7ZHymvSJb0apowFZRZQFm72rqSf3791nQtTdyioVYDi6cZGhUgrkWg==",
+      "type": "package",
+      "path": "dapr.actors/1.14.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "dapr.actors.1.14.0.nupkg.sha512",
+        "dapr.actors.nuspec",
+        "images/logo-transparent.png",
+        "lib/net6.0/Dapr.Actors.dll",
+        "lib/net6.0/Dapr.Actors.xml",
+        "lib/net8.0/Dapr.Actors.dll",
+        "lib/net8.0/Dapr.Actors.xml"
       ]
     },
     "Dapr.AspNetCore/1.14.0": {
@@ -1574,6 +1607,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
+      "Dapr.Actors >= 1.14.0",
       "Dapr.AspNetCore >= 1.14.0",
       "Dapr.Workflow >= 1.14.0"
     ]
@@ -1631,6 +1665,10 @@
       "net8.0": {
         "targetAlias": "net8.0",
         "dependencies": {
+          "Dapr.Actors": {
+            "target": "Package",
+            "version": "[1.14.0, )"
+          },
           "Dapr.AspNetCore": {
             "target": "Package",
             "version": "[1.14.0, )"

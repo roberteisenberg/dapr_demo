@@ -6,8 +6,12 @@ A hands-on project demonstrating Dapr microservices from local development to cl
 
 **[Kubernetes](https://kubernetes.io/)** is a container orchestration platform originally developed by Google to manage its massive data center infrastructure, then open-sourced in 2014. It has since become the industry standard for deploying and scaling containerized applications. This project starts without it (Phases 1–2) so you can see Dapr's value before Kubernetes enters the picture in Phase 3. Dapr and Kubernetes are both [CNCF](https://www.cncf.io/) projects. Rather than reinventing the wheel, Dapr leverages established Kubernetes primitives — annotations for sidecar injection, CRDs for component configuration, Helm for installation — while adding application-level concerns like state, messaging, and service invocation on top.
 
-> **Coming Soon:** Dedicated repos and deep dives:
-> - AI agent orchestration with Dapr Agents
+> **Related repos:**
+> - [LangGraph Fraud Investigation Tutorial](https://github.com/roberteisenberg/langgraph) — Progressive tutorial from single LLM call to multi-agent system
+>
+> Current plans are to:
+> - Explore LangGraph agent patterns (reflection, parallel execution) in a dedicated repo
+> - Deep dive into Dapr Workflow + LangGraph integration
 > - Using Aspire with Dapr
  
 > **Note:** This repository is primarily a working reference implementation. It contains separate directories for each phase allowing comparing the implementation code to each topic. The documentation and walkthroughs were added as a companion guide and have not been through formal tutorial-level QA. If you run into gaps or inconsistencies, the code and scripts themselves are the source of truth.

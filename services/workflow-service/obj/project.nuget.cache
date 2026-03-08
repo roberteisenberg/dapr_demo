@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "j+pRoxzS1cM=",
+  "dgSpecHash": "KTj0hRQEUmc=",
   "success": true,
   "projectFilePath": "C:\\Projects\\dapr_demo\\services\\workflow-service\\WorkflowService.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\rober\\.nuget\\packages\\castle.core\\5.0.0\\castle.core.5.0.0.nupkg.sha512",
+    "C:\\Users\\rober\\.nuget\\packages\\dapr.actors\\1.14.0\\dapr.actors.1.14.0.nupkg.sha512",
     "C:\\Users\\rober\\.nuget\\packages\\dapr.aspnetcore\\1.14.0\\dapr.aspnetcore.1.14.0.nupkg.sha512",
     "C:\\Users\\rober\\.nuget\\packages\\dapr.client\\1.14.0\\dapr.client.1.14.0.nupkg.sha512",
     "C:\\Users\\rober\\.nuget\\packages\\dapr.workflow\\1.14.0\\dapr.workflow.1.14.0.nupkg.sha512",
