@@ -11,6 +11,7 @@ A hands-on project demonstrating Dapr microservices from local development to cl
 >
 > Currently planned repos:
 > - LangGraph agent patterns (reflection, parallel execution)
+> - LangSmith observability and evaluation workflows
 > - Dapr Workflow + LangGraph integration
 > - Aspire with Dapr
  
